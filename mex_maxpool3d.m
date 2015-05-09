@@ -1,7 +1,7 @@
-%MEX_POOL3D Volume max pooling for 3D convnet
-%  [Y,ind] = MEX_POOL3D(X); forward pass
-%  dZdX = MEX_POOL3D(dZdY, ind); backward pass
-%  MEX_POOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
+%MEX_MAXPOOL3D Volume max pooling for 3D convnet
+%  [Y,ind] = MEX_MAXPOOL3D(X); forward pass
+%  dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
+%  MEX_MAXPOOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
 %
 %  Input:
 %   X: [H,W,D,M,N]. Volume at input port or feature maps. H, W, D are volume's 
