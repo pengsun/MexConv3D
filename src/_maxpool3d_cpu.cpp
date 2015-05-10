@@ -1,5 +1,6 @@
 #include "mex_shorthand.h"
 #include "_maxpool3d_cpu.h"
+#include <omp.h>
 
 maxpool3d_cpu::maxpool3d_cpu()
 {
@@ -84,8 +85,8 @@ void maxpool3d_cpu::create_Y()
 
 void maxpool3d_cpu::create_ind()
 {
-  
-  ind = mxCreateDoubleMatrix(mxGetNumberOfElements(Y), 1, mxREAL);
+  ind = mxCreateNumericArray(mxGetNumberOfDimensions(Y), mxGetDimensions(Y),
+                             mxDOUBLE_CLASS, mxREAL);
 }
 
 
@@ -127,11 +128,11 @@ void maxpool3d_cpu::fprop()
   this->create_ind();
 
   // iterate over Y, record the max value and index
-  float*  yy = (float*)mxGetData(this->Y);
-  double* ii = (double*)mxGetData(this->ind);
   #pragma omp parallel for
   for (int64_T n = 0; n < numVol(Y); ++n) { // Y dim4,dim5...: along each volume
-    float * x_n = getVolDataBeg<float>(X, n);
+    float* const xx = getVolDataBeg<float>(X, n); // input port (never change it)
+    float* yy  = getVolDataBeg<float>(Y, n);      // output port 
+    double* ii = getVolDataBeg<double>(ind, n);
 
     for (mwSize k = 0; k < getVolD(Y); ++k) {     // Y dim3: along depth
       for (mwSize j = 0; j < getVolW(Y); ++j) {   // Y dim2: along width
@@ -145,7 +146,7 @@ void maxpool3d_cpu::fprop()
           offset[0] = i*pool[0]; 
           offset[1] = j*pool[1];
           offset[2] = k*pool[2];
-          float *xwin = x_n + offset[0] + offset[1]*xH + offset[2]*xHW;
+          float *xwin = xx + offset[0] + offset[1]*xH + offset[2]*xHW;
           
           // inspect the window at X, get the max value
           for (mwSize t = 0; t < pool[2]; ++t) {     // X window dim3
@@ -169,7 +170,7 @@ void maxpool3d_cpu::fprop()
       } // j
     } // k
     
-  } // n
+  } // parallel for n
 
 }
 
@@ -181,14 +182,15 @@ void maxpool3d_cpu::bprop()
   // dX at input port
   float* const dxx = (float*)mxGetData(this->dX);
   // dY and index at output port
-  float* dyy = (float*)mxGetData(this->dY);
-  double* ii = (double*)mxGetData(this->ind);
-  mwSize num = mxGetNumberOfElements(this->dY);
+  float* const dyy = (float*)mxGetData(this->dY);
+  double* const ii = (double*)mxGetData(this->ind);
+  
   // iterate over dY, set dX
+  mwSize num = mxGetNumberOfElements(this->dY);
   #pragma omp parallel for
   for (int64_T n = 0; n < num; ++n) {
-    mwSize ix = (mwSize)(*ii++);
+    mwSize ix = mwSize( ii[n] );
     ix -= 1; // matlab 1-base -> C++ 0-base
-    *(dxx + ix) = *dyy++;
+    *(dxx + ix) = dyy[n];
   }
 }

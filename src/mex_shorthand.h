@@ -17,14 +17,16 @@ inline bool isStrEqual (mxArray const *pa, char const * str) {
 }
 
 template<typename T, int N> inline bool setCArray (mxArray const *pa, T arr[]) {
+  if (!mxIsDouble(pa)) mexErrMsgTxt("setCArray: pa must be double mtrix\n");
+
   bool flag_success =  true;
   mwSize nelem = mxGetNumberOfElements(pa);
   if (nelem == N) {
     for (int i = 0; i < N; ++i)
-      arr[i] = ((T*)mxGetData(pa))[i];
+      arr[i] = T(*(getDataBeg<double>(pa) + i));
   } else if (nelem == 1) {
     for (int i = 0; i < N; ++i)
-      arr[i] = (T)mxGetScalar(pa);
+      arr[i] = T(mxGetScalar(pa));
   } else {
     flag_success = false;
   }

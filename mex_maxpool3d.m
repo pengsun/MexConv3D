@@ -14,7 +14,7 @@
 %   pool: [PH,PW,PD] or [P]. Pooling 3D window size. PH, PW, PD are the 
 %   height, width and depth, respectively. P is the size for all. Default 
 %   to P = 2.
-%   s: [sH,sW,SD] or [s]. Default to s = 2
+%   s: [sH,sW,sD] or [s]. Default to s = 2
 %   pad: [PH,PW,PD] or [P]. Padding size
 %
 %  Output:
