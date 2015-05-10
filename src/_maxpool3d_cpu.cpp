@@ -61,7 +61,8 @@ void maxpool3d_cpu::set_stride( mxArray const *pa )
 
 void maxpool3d_cpu::set_pad( mxArray const *pa )
 {
-  mexErrMsgTxt("Option pad not implemented yet. Sorry...\n");
+  mexErrMsgTxt("Option pad not implemented yet. Sorry..."
+               "Currently the pad is set to 0.\n");
   //if ( !setCArray<mwSize, 6>(pa, this->pad) )
   //  mexErrMsgTxt(THE_CMD);
 }

@@ -2,14 +2,17 @@
 #include "src/maxpool3d.h"
 #include "mex_shorthand.h"
 
-
-static factory_mp3d* factory = 0;
-static maxpool3d*    h = 0;
-static void cleanup ()
+namespace {
+  
+factory_mp3d* factory = 0;
+maxpool3d*    h = 0;
+void cleanup ()
 {
   safe_delete(factory);
   safe_delete(h);
 }
+
+} // namespace
 
 // [Y,ind] = MEX_MAXPOOL3D(X); forward pass
 // dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
