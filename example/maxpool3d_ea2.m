@@ -19,3 +19,5 @@ assert( yvalue == max(subxx(:)) )
 [~, im_x]  = max( subx(:) );
 [~, im_xx] = max( subxx(:) );
 assert( im_x == im_xx )
+
+yvalue

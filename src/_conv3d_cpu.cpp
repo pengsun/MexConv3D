@@ -1,7 +1,6 @@
 #include "_conv3d_cpu.h"
 
 
-
 conv3d_cpu::conv3d_cpu()
 {
 
@@ -19,23 +18,25 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
 
     ct = FPROP;
     n_opt = 3;
-    X = (mxArray*) vi[0]; // we won't change input!
+    X = (mxArray*) vi[0]; // we hereby guarantee that we won't change the inputs!
     F = (mxArray*) vi[1];
     B = (mxArray*) vi[2];
-  } else if (no == 1) {
+  } 
+  else if (no == 3) {
     if ( ni < 4 ) 
       mexErrMsgTxt(THE_CMD);
-    if ( !mxIsSingle(vi[0]) || !mxIsDouble(vi[1]) ||
-         !mxIsSingle(vi[2]) || !mxIsDouble(vi[3]) )
+    if ( !mxIsSingle(vi[0]) || !mxIsSingle(vi[1]) ||
+         !mxIsSingle(vi[2]) || !mxIsSingle(vi[3]) )
       mexErrMsgTxt(THE_CMD);
 
     ct = BPROP;
     n_opt = 4;
-    X  = (mxArray*) vi[0]; // we won't change input!
+    X  = (mxArray*) vi[0]; // we hereby guarantee that we won't change the inputs!
     F  = (mxArray*) vi[1];
     B  = (mxArray*) vi[2];
     dY = (mxArray*) vi[3];
-  } else {
+  } 
+  else {
     mexErrMsgTxt(THE_CMD);
   }
 
@@ -43,9 +44,9 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
   if ( ((ni-n_opt)%2) != 0 ) // imbalance option/value
     mexErrMsgTxt(THE_CMD);
   for (int i = n_opt; i < ni; i+=2) {
-    else if (isStrEqual(vi[i], "stride")) this->set_stride(vi[i+1]);
-    else if (isStrEqual(vi[i], "pad"))    this->set_pad(vi[i+1]);
-    else                                  mexErrMsgTxt(THE_CMD);
+    if (isStrEqual(vi[i], "stride"))   this->set_stride(vi[i+1]);
+    else if (isStrEqual(vi[i], "pad")) this->set_pad(vi[i+1]);
+    else                               mexErrMsgTxt(THE_CMD);
   } // for i
 
   return ct;
@@ -69,8 +70,14 @@ void conv3d_cpu::set_pad( mxArray const *pa )
 
 void conv3d_cpu::create_Y()
 {
-  // check
-  if (getVolH(X) < getVolH(F) ||
+  // check input X and filter F, B
+  if (getVolP(F) != getVolM(X))  // #feature maps should match
+    mexErrMsgTxt(THE_CMD);
+
+  if (getVolQ(F) != mxGetNumberOfElements(B)) // #Bias should math the output
+    mexErrMsgTxt(THE_CMD);
+
+  if (getVolH(X) < getVolH(F) || // filter should not be greater than feature map
       getVolW(X) < getVolW(F) ||
       getVolD(X) < getVolD(F) )
     mexErrMsgTxt(THE_CMD);
@@ -88,15 +95,27 @@ void conv3d_cpu::create_Y()
 
 void conv3d_cpu::create_dX()
 {
+  dX = createVol5dLike(X);
+}
 
+void conv3d_cpu::create_dF()
+{
+  dF = createVol5dLike(F);
+}
+
+void conv3d_cpu::create_dB()
+{
+  dB = createVol5dLike(B);
 }
 
 void conv3d_cpu::fprop()
 {
-
+  create_Y();
 }
 
 void conv3d_cpu::bprop()
 {
-
+  create_dX();
+  create_dF();
+  create_dB();
 }

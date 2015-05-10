@@ -9,7 +9,7 @@ src{end+1} = 'src/_conv3d_cpu.cpp';
 src = cellfun(@(f)(fullfile(dir_root,f)), src, 'UniformOutput',false);
 %% options
 opt = {};
-% opt{end+1} = '-g';
+opt{end+1} = '-g';
 
 opt{end+1} = ['-I',dir_inc];
 opt{end+1} = '-largeArrayDims';

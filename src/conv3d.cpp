@@ -12,6 +12,11 @@ conv3d::conv3d()
 {
   stride[0] = stride[1] = stride[2] = 2;
   pad[0] = pad[1] = pad[2] = pad[3] = pad[4] = pad[5] = 0;
+
+  F = dF = 0;
+  B = dB = 0;
+  X = dX = 0;
+  Y = dY = 0;
 }
 
 conv3d* factory_c3d_homebrew::create(

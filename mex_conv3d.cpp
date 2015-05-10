@@ -27,7 +27,7 @@ void mexFunction(int no, mxArray       *vo[],
   factory = new factory_c3d_homebrew;
 #endif
   assert(h==0);
-  h = factory->create(vi[0],vi[1],vi[2]);
+  h = factory->create(vi[0],vi[1],vi[2]); // always expect X, F, B 
 
   // parse input
   conv3d::CALL_TYPE ct = h->parse_and_set(no,vo,ni,vi);

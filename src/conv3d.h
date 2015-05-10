@@ -1,5 +1,6 @@
 #pragma once
 #include "mex.h"
+#include "mex_shorthand.h"
 
 //// the transformer
 struct conv3d {
