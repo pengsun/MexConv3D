@@ -11,13 +11,13 @@
 %   height, width and depth, respectively. P is #input feature map and Q is
 %   #output feature map
 %   B: [1, Q]. Bias.
-%   dZdY: [Ho,Wo,Do,P,Q]. Output feature maps. Subscript "o" means output.
+%   dZdY: [Ho,Wo,Do,Q,N]. Output feature maps. Subscript "o" means output.
 %   s: [1] or [a,b,c]. the stride. default 1
 %   p: [1] or [a,b,c]. pad. default 0
 %
 % Output:
 %   Y: [Ho,Wo,Do,Q,N]. Output feature maps
-%   dZdX: [H,W,D,M,N]. Delta w.r.t X where Z means loss. 
+%   dZdX: [H,W,D,P,N]. Delta w.r.t X where Z means loss. 
 %   dZdF: [FH,FW,FD,P,Q]. Delta w.r.t. F
 %   dZdB: [1, Q]. Delta w.r.t. B
 %
