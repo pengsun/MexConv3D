@@ -9,7 +9,7 @@ struct maxpool3d {
   mwSize pad[6];
   mwSize pool[3];
   mwSize stride[3];
-  // intermediate data
+  // intermediate data: max elements index
   mxArray *ind;
   // data at input/output port
   mxArray *X, *dX;
@@ -26,7 +26,7 @@ struct maxpool3d {
 };
 
 
-//// factor
+//// factory
 struct factory_mp3d {
   virtual maxpool3d* create (mxArray const *from) = 0;
 };
