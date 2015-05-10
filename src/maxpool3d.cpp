@@ -20,6 +20,9 @@ maxpool3d::maxpool3d()
 //// Impl of factory
 maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
 {
+  if (!mxIsSingle(from))
+    mexErrMsgTxt(maxpool3d::THE_CMD);
+
   return new maxpool3d_cpu;
 }
 

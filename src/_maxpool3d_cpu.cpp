@@ -70,55 +70,44 @@ void maxpool3d_cpu::set_pad( mxArray const *pa )
 
 void maxpool3d_cpu::create_Y()
 {
-  // header: X 
+  // check 
   mwSize ndimX = mxGetNumberOfDimensions(X);
   if (ndimX < 3) mexErrMsgTxt(THE_CMD);
-  const mwSize* szX  = mxGetDimensions(X);
-  if (!mxIsSingle(X)) mexErrMsgTxt(THE_CMD);
 
-  // header: Y TODO the right size!!
+  // size Y: TODO the right size
   mwSize szY[5] = {0,0,0,1,1};
-  for (int i = 0; i < 3; ++i)
-    szY[i] = szX[i] / pool[i];
-  for (int i = 3; i < ndimX; ++i)
-    szY[i] = szX[i];
+  szY[0] = getSzAtDim<1>(X) / pool[0];
+  szY[1] = getSzAtDim<2>(X) / pool[1];
+  szY[2] = getSzAtDim<3>(X) / pool[2];
+  szY[3] = getSzAtDim<4>(X);
+  szY[4] = getSzAtDim<5>(X);
 
   // create Y
-  this->Y = mxCreateNumericArray(5, szY, mxSINGLE_CLASS, mxREAL);
+  Y = createVol5d(szY);
 }
 
 void maxpool3d_cpu::create_ind()
 {
-  ind = mxCreateNumericArray(mxGetNumberOfDimensions(Y), mxGetDimensions(Y),
-                             mxDOUBLE_CLASS, mxREAL);
+  ind = createVol5dLike(Y, mxDOUBLE_CLASS);
 }
 
 
 void maxpool3d_cpu::create_dX()
 {
-  // check ind
-  if (!mxIsDouble(ind)) mexErrMsgTxt(THE_CMD);
+  // check ind & dY
+  if (!mxIsDouble(ind) || !mxIsSingle(dY)) 
+    mexErrMsgTxt(THE_CMD);
 
-  // header: dY
-  mwSize ndimY = mxGetNumberOfDimensions(dY);
-  if (ndimY < 3) mexErrMsgTxt(THE_CMD);
-  const mwSize* szY  = mxGetDimensions(dY);
-  if (!mxIsSingle(dY)) mexErrMsgTxt(THE_CMD);
+  // size dX: TODO the right size
+  mwSize szdX[5] = {0,0,0,1,1};
+  szdX[0] = getSzAtDim<1>(dY) * pool[0];
+  szdX[1] = getSzAtDim<2>(dY) * pool[1];
+  szdX[2] = getSzAtDim<3>(dY) * pool[2];
+  szdX[3] = getSzAtDim<4>(dY);
+  szdX[4] = getSzAtDim<5>(dY);
 
-  // header: dX TODO the right size!!
-  mwSize szX[5] = {0,0,0,1,1};
-  for (int i = 0; i < 3; ++i)
-    szX[i] = szY[i] * pool[i];
-  for (int i = 3; i < ndimY; ++i)
-    szX[i] = szY[i];
-
-  // create dX
-  this->dX = mxCreateNumericArray(5, szX, mxSINGLE_CLASS, mxREAL);
-
-  // make sure they are zeros
-  mwSize num = mxGetNumberOfElements(dX);
-  float* ptr = (float*)mxGetData(dX);
-  for (mwSize n = 0; n < num; ++n, ++ptr) *ptr = 0.0;
+  // create Y
+  dX = createVol5dZeros(szdX);
 }
 
 void maxpool3d_cpu::fprop()

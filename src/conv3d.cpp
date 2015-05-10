@@ -17,7 +17,8 @@ conv3d::conv3d()
 conv3d* factory_c3d_homebrew::create(
   mxArray const *X, mxArray const *F, mxArray const *B, mxArray const *dY)
 {
+  if (!mxIsSingle(X) || !mxIsSingle(F) || !mxIsSingle(B))
+    mexErrMsgTxt(conv3d::THE_CMD);
+
   return new conv3d_cpu;
 }
-
-
