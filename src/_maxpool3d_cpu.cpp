@@ -53,14 +53,17 @@ void maxpool3d_cpu::set_pool( mxArray const *pa )
 
 void maxpool3d_cpu::set_stride( mxArray const *pa )
 {
-  if ( !setCArray<mwSize, 3>(pa, this->stride) )
-    mexErrMsgTxt(THE_CMD);
+  mexErrMsgTxt("Option stride not implemented yet. Sorry..."
+               "Currently the stride is as large as pool.\n");
+  //if ( !setCArray<mwSize, 3>(pa, this->stride) )
+  //  mexErrMsgTxt(THE_CMD);
 }
 
 void maxpool3d_cpu::set_pad( mxArray const *pa )
 {
-  if ( !setCArray<mwSize, 6>(pa, this->pad) )
-    mexErrMsgTxt(THE_CMD);
+  mexErrMsgTxt("Option pad not implemented yet. Sorry...\n");
+  //if ( !setCArray<mwSize, 6>(pa, this->pad) )
+  //  mexErrMsgTxt(THE_CMD);
 }
 
 
