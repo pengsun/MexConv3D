@@ -16,13 +16,13 @@ struct maxpool3d {
   mxArray *Y, *dY;
 
   // forward/backward propagation
-  virtual void fprop ();
-  virtual void bprop ();
+  virtual void fprop () = 0;
+  virtual void bprop () = 0;
 
-  // helper: command parser
+  // helper: command, parser
+  static const char * THE_CMD;
   enum CALL_TYPE {FPROP, BPROP};
-  virtual CALL_TYPE parse_and_set (
-    int no, mxArray *vo[], int ni, mxArray const *vi[]);
+  virtual CALL_TYPE parse_and_set (int no, mxArray *vo[], int ni, mxArray const *vi[]) = 0;
 };
 
 

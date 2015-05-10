@@ -1,5 +1,8 @@
 #pragma once
 #include "mex.h"
+#include <cstring>
+#include <numeric>
+#include <cassert>
 
 //// for mxArray
 template<typename T> inline T* getDataBeg(mxArray const *pa) {
@@ -18,8 +21,8 @@ template<typename T, int N> inline bool setCArray (mxArray const *pa, T arr[]) {
   mwSize nelem = mxGetNumberOfElements(pa);
   if (nelem == N) {
     for (int i = 0; i < N; ++i)
-      arr[i] = (T)(mxGetData(pa)[i]);
-  } else (nelem == 1) {
+      arr[i] = ((T*)mxGetData(pa))[i];
+  } else if (nelem == 1) {
     for (int i = 0; i < N; ++i)
       arr[i] = (T)mxGetScalar(pa);
   } else {
@@ -34,7 +37,7 @@ inline mwSize getVolH(mxArray const *pa) { // Height: dim1
 }
 
 inline mwSize getVolW(mxArray const *pa) { // Width: dim2
-  return mxGetN(pa);
+  return ( mxGetDimensions(pa)[1] );
 }
 
 inline mwSize getVolD(mxArray const *pa) { // Depth: dim3
@@ -51,14 +54,14 @@ inline mwSize numVol(mxArray const *pa) { // #volumes = dim4*dim5*...
 
 inline mwSize numelVol(mxArray const *pa) { // #elements in volume = dim1*dim2*dim3
   mwSize numel = 1;
-  mwSize ndim = std::min(mxGetNumberOfDimensions(pa), 3);
+  mwSize ndim = std::min(mxGetNumberOfDimensions(pa), (mwSize)3);
   for (mwSize i = 0; i < ndim; ++i)
     numel *= ( mxGetDimensions(pa)[i] );
   return numel;
 }
 
 template<typename T> inline T* getVolDataBeg(mxArray const *pa, mwSize iVol = 0) {
-  T* beg = getDataBeg(pa);
+  T* beg = getDataBeg<T>(pa);
   mwSize v = numelVol(pa);
   return (beg + v*iVol);
 }
@@ -70,3 +73,17 @@ template<typename T> inline void safe_delete (T* &ptr) { // "safe": delete if ze
     ptr = 0;
   }
 }
+
+inline mxArray* createVol (mwSize sz[], mxClassID tp = mxSINGLE_CLASS) {
+  mwSize ndim = 5;
+  return mxCreateNumericArray(ndim, sz, tp, mxREAL);
+}
+
+inline mxArray* createVol (mwSize H, mwSize W, mwSize D, mwSize P, mwSize Q, 
+                           mxClassID tp = mxSINGLE_CLASS) 
+{
+  mwSize sz[5];
+  sz[0] = H; sz[1] = W; sz[2] = D; sz[3] = P; sz[4] = Q;
+  return createVol(sz, tp);
+}
+

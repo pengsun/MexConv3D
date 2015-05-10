@@ -1,5 +1,6 @@
 #include "mex.h"
 #include "src/maxpool3d.h"
+#include "mex_shorthand.h"
 
 
 static factory_mp3d* factory = 0;
@@ -10,11 +11,9 @@ static void cleanup ()
   safe_delete(h);
 }
 
-//
 // [Y,ind] = MEX_MAXPOOL3D(X); forward pass
 // dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
 // MEX_MAXPOOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
-//
 void mexFunction(int no, mxArray       *vo[],
                  int ni, mxArray const *vi[])
 {

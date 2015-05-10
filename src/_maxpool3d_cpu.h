@@ -12,4 +12,8 @@ private:
   void set_pool   (mxArray const *pa);
   void set_stride (mxArray const *pa);
   void set_pad    (mxArray const *pa);
+
+  void create_Y   ();
+  void create_ind ();
+  void create_dX  ();
 };
