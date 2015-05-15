@@ -6,6 +6,66 @@ conv3d_cpu::conv3d_cpu()
 
 }
 
+void conv3d_cpu::fprop()
+{
+  create_Y();
+  init_convmat();
+  init_u(); 
+
+  // iterate over each training instance
+  mwSize N = getVolN(X);
+  for (mwSize i = 0; i < N; i++) {
+    // make phiX: the convolution matrix
+    vol_to_convmat(X, i);
+
+    // convolution: Y_ = phiX * F_
+    matw F_ = make_F_();
+    matw Y_ = make_Y_(i);
+    CeqAxB(convmat, F_, Y_);
+
+    // plus the bias: Y_ += u * B
+    matw B_ = make_B_();
+    CeqAxB(u, B_, Y_);
+  }
+
+  free_u();
+  free_convmat();
+}
+
+void conv3d_cpu::bprop()
+{
+  create_dX();
+  create_dF();
+  create_dB();
+  init_convmat();
+  init_u();
+
+  mwSize N = getVolN(X);
+  matw dF_ = make_dF_();
+  matw dB_ = make_dB_();
+  for (mwSize i = 0; i < N; ++i) {
+    // make phiX: the convolution matrix
+    vol_to_convmat(X, i);
+
+    // dF += phiX' * dY_
+    matw dY_ = make_dY_(i);
+    CeqATxB(convmat, dY_, dF_);
+
+    // dB += u' * dY
+    CeqATxB(u, dY_, dB_);
+
+    // dphiX = dY * F'
+    bool overwrite = true; // safe to reuse phiX memory! but remember to overwrite it!
+    matw F_ = make_F_();
+    CeqAxBT(dY_, F_, convmat, overwrite);
+    // dX(:,:,:,:,i) <-- dphiX
+    convmat_to_vol(dX, i);
+  }
+
+  free_u();
+  free_convmat();
+}
+
 conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxArray const *vi[] )
 {
   conv3d_cpu::CALL_TYPE ct;
@@ -93,6 +153,36 @@ void conv3d_cpu::create_Y()
   Y = createVol5d(HY, WY, DY, MY, NY);
 }
 
+matw conv3d_cpu::make_F_()
+{
+  matw F_;
+  F_.beg = getDataBeg<float>(F);
+  F_.H   = numelVol(F) * getVolP(F);
+  F_.W   = getVolQ(F);
+
+  return F_;
+}
+
+matw conv3d_cpu::make_Y_(mwSize i)
+{
+  matw Y_;
+  Y_.beg = getVolInstDataBeg<float>(Y, i);
+  Y_.H   = numelVol(Y);
+  Y_.W   = getSzAtDim<4>(Y);
+
+  return Y_;
+}
+
+matw conv3d_cpu::make_B_()
+{
+  matw B_;
+  B_.beg = getDataBeg<float>(B);
+  B_.H   = 1;
+  B_.W   = mxGetNumberOfElements(B);
+
+  return B_;
+}
+
 void conv3d_cpu::create_dX()
 {
   dX = createVol5dLike(X);
@@ -108,14 +198,83 @@ void conv3d_cpu::create_dB()
   dB = createVol5dLike(B);
 }
 
-void conv3d_cpu::fprop()
+matw conv3d_cpu::make_dX_(mwSize i)
 {
-  create_Y();
+  matw dX_;
+  dX_.beg = getVolInstDataBeg<float>(dX, i);
+  dX_.H   = numelVol(dX);
+  dX_.W   = getSzAtDim<4>(dX);
+
+  return dX_;
 }
 
-void conv3d_cpu::bprop()
+matw conv3d_cpu::make_dY_(mwSize i)
 {
-  create_dX();
-  create_dF();
-  create_dB();
+  matw dY_;
+  dY_.beg = getVolInstDataBeg<float>(dY, i);
+  dY_.H   = numelVol(dY);
+  dY_.W   = getSzAtDim<4>(dY);
+
+  return dY_;
+}
+
+matw conv3d_cpu::make_dF_()
+{
+  matw dF_;
+  dF_.beg = getVolDataBeg<float>(dF);
+  dF_.H   = numelVol(dF) * getSzAtDim<4>(dF);
+  dF_.W   = getSzAtDim<5>(dF);
+
+  return dF_;
+}
+
+matw conv3d_cpu::make_dB_()
+{
+  matw dB_;
+  dB_.beg = getVolDataBeg<float>(dB);
+  dB_.H   = 1;
+  dB_.W   = mxGetNumberOfElements(dB);
+  
+  return dB_;
+}
+
+void conv3d_cpu::init_convmat()
+{
+  convmat.H = numelVol(Y);
+  convmat.W = numelVol(F) * getVolP(F);
+  mwSize nelem = convmat.H * convmat.W;
+  convmat.beg = (float*)mxCalloc( nelem, sizeof(float) );
+  // mxCalloc assures the initialization with all 0s ! 
+}
+
+void conv3d_cpu::free_convmat()
+{
+  mxFree( (void*)convmat.beg );
+}
+
+void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize i)
+{
+
+}
+
+void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize i)
+{
+
+}
+
+void conv3d_cpu::init_u()
+{
+  u.H = numelVol(Y);
+  u.W = 1;
+  mwSize nelem = u.H * u.W ;
+  u.beg = (float*)mxMalloc( nelem * sizeof(float) );
+
+  // make sure all one
+  for (int i = 0; i < nelem; i++)
+    u.beg[i] = 1.0;
+}
+
+void conv3d_cpu::free_u()
+{
+  mxFree( (void*)u.beg );
 }

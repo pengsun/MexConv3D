@@ -95,6 +95,13 @@ template<typename T> inline T* getVolDataBeg(mxArray const *pa, mwSize iVol = 0)
   return (beg + v*iVol);
 }
 
+template<typename T> inline T* getVolInstDataBeg(mxArray const *pa, mwSize iInst = 0) {
+  T* beg = getDataBeg<T>(pa);
+  mwSize stride = numelVol(pa)*getVolP(pa);
+  return (beg + stride*iInst);
+}
+
+
 //// for resource management
 template<typename T> inline void safe_delete (T* &ptr) { // "safe": delete if zero, set to zero after deletion
   if (ptr != 0) {
