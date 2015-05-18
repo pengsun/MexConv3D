@@ -3,19 +3,19 @@
 #include "mex_shorthand.h"
 
 // 2D matrix thin wrapper over raw data pointer
-// presume continuous memory; 
-// caller should assure the data are correctly assigned 
+// presume continuous memory
+// caller owns data and assure the assignment 
 struct matw {
   float *beg;
   mwSize H, W;
 };
 
-// C += A * B or C = A * B (over write)
-void CeqAxB (const matw &A, const matw &B, matw &C, bool isOverWrite = false);
+// A*B + C -> C (accumulation) or A*B -> C(overwrite)
+void AxBtoC (const matw &A, const matw &B, matw &C, bool isOverWrite);
 
-// C += AT * B or C = AT * B (over write) 
-void CeqATxB (const matw &A, const matw &B, matw &C, bool isOverWrite = false);
+// AT*B + C -> C (accumulation) or AT*B -> C (overwrite) 
+void ATxBtoC (const matw &A, const matw &B, matw &C, bool isOverWrite);
 
-// C += A * BT or C = A * BT (over write)
-void CeqAxBT (const matw &A, const matw &B, matw &C, bool isOverWrite = false);
+// A*BT + C -> C (accumulation) or A*BT -> C (overwrite)
+void AxBTtoC (const matw &A, const matw &B, matw &C, bool isOverWrite);
 

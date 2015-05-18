@@ -1,6 +1,78 @@
 #include "_conv3d_cpu.h"
 
+namespace {
 
+// helper: sub volume attaching to big volume
+struct subvol4D {
+  float* beg;
+  mwSize offset[4];
+  mwSize size[4];
+  mwSize stride[4];
+
+  void copy_to_matw_row           (matw& to,   mwSize row);
+  void copy_and_inc_from_matw_row (matw& from, mwSize row);
+};
+
+void subvol4D::copy_to_matw_row (matw& the_mat, mwSize row)
+{
+  float* pe_mat = the_mat.beg + row; // ptr element matrix
+  
+  for (mwSize d3 = 0; d3 < size[3]; ++d3) {
+    float* ptr_d3 = (offset[3] + d3)*stride[3] + this->beg;
+
+    for (mwSize d2 = 0; d2 < size[2]; ++d2) {
+      float* ptr_d2 = (offset[2] + d2)*stride[2] + ptr_d3;
+
+      for (mwSize d1 = 0; d1 < size[1]; ++d1) {
+        float* ptr_d1 = (offset[1] + d1)*stride[1] + ptr_d2;
+
+        for (mwSize d0 = 0; d0 < size[0]; ++d0) {
+          float* pe_vol = (offset[0] + d0)*stride[0] + ptr_d1; // ptr element volume
+          
+          // copy the single element
+          *pe_mat = *pe_vol;
+          
+          // advance to next matrix element
+          pe_mat += the_mat.H;
+        } // d0
+      } // d1
+    } // d2
+  } // d3
+  
+}
+
+void subvol4D::copy_and_inc_from_matw_row (matw& the_mat, mwSize row)
+{
+  float* pe_mat = the_mat.beg + row; // ptr element matrix
+
+  for (mwSize d3 = 0; d3 < size[3]; ++d3) {
+    float* ptr_d3 = (offset[3] + d3)*stride[3] + this->beg;
+
+    for (mwSize d2 = 0; d2 < size[2]; ++d2) {
+      float* ptr_d2 = (offset[2] + d2)*stride[2] + ptr_d3;
+
+      for (mwSize d1 = 0; d1 < size[1]; ++d1) {
+        float* ptr_d1 = (offset[1] + d1)*stride[1] + ptr_d2;
+
+        for (mwSize d0 = 0; d0 < size[0]; ++d0) {
+          float* pe_vol = (offset[0] + d0)*stride[0] + ptr_d1; // ptr element volume
+
+          // copy and increment the single element
+          *pe_vol += *pe_mat;
+
+          // advance to next matrix element
+          pe_mat += the_mat.H;
+        } // d0
+      } // d1
+    } // d2
+  } // d3
+}
+
+
+} // namespace
+
+
+//// impl of public methods
 conv3d_cpu::conv3d_cpu()
 {
 
@@ -21,11 +93,11 @@ void conv3d_cpu::fprop()
     // convolution: Y_ = phiX * F_
     matw F_ = make_F_();
     matw Y_ = make_Y_(i);
-    CeqAxB(convmat, F_, Y_);
+    AxBtoC(convmat, F_, Y_, true); // overwrite Y_
 
     // plus the bias: Y_ += u * B
     matw B_ = make_B_();
-    CeqAxB(u, B_, Y_);
+    AxBtoC(u, B_, Y_, false); // accumulation on Y_
   }
 
   free_u();
@@ -49,15 +121,15 @@ void conv3d_cpu::bprop()
 
     // dF += phiX' * dY_
     matw dY_ = make_dY_(i);
-    CeqATxB(convmat, dY_, dF_);
+    ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_
 
     // dB += u' * dY
-    CeqATxB(u, dY_, dB_);
+    ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
 
     // dphiX = dY * F'
-    bool overwrite = true; // safe to reuse phiX memory! but remember to overwrite it!
     matw F_ = make_F_();
-    CeqAxBT(dY_, F_, convmat, overwrite);
+    // safe to reuse convmat memory, remember to overwrite it!
+    AxBTtoC(dY_, F_, convmat, true);
     // dX(:,:,:,:,i) <-- dphiX
     convmat_to_vol(dX, i);
   }
@@ -112,6 +184,7 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
   return ct;
 }
 
+//// impl of helpers
 void conv3d_cpu::set_stride( mxArray const *pa )
 {
   mexErrMsgTxt("Option stride not implemented yet. Sorry..."
@@ -240,7 +313,13 @@ matw conv3d_cpu::make_dB_()
 
 void conv3d_cpu::init_convmat()
 {
-  convmat.H = numelVol(Y);
+  if (Y != 0) // in FPROP, Y has been set
+    convmat.H = numelVol(Y);
+  else if (dY != 0) // in BPROP, dY has been set
+    convmat.H = numelVol(dY);
+  else
+    mexErrMsgTxt(THE_CMD);
+
   convmat.W = numelVol(F) * getVolP(F);
   mwSize nelem = convmat.H * convmat.W;
   convmat.beg = (float*)mxCalloc( nelem, sizeof(float) );
@@ -252,19 +331,103 @@ void conv3d_cpu::free_convmat()
   mxFree( (void*)convmat.beg );
 }
 
-void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize i)
+void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 {
+  // TODO: code refactoring. almost the same with vol_to_convmat
+
+  // v: [H,   W,   D,   P]
+  // F: [H',  W',  D',  P]
+  // Y: [H'', W'', D'', 1]
+  // convmat: [H''W''D''  H'W'D'P]
+
+  // sub volume attaching to the big volume
+  subvol4D sv;
+  sv.beg = getVolInstDataBeg<float>(pvol, iInst);
+  sv.size[0] = getVolH(F); 
+  sv.size[1] = getVolW(F);
+  sv.size[2] = getVolD(F);
+  sv.size[3] = getVolP(F);
+  sv.stride[0] = 1;
+  sv.stride[1] = getVolH(pvol);
+  sv.stride[2] = getVolH(pvol)*getVolW(pvol);
+  sv.stride[3] = numelVol(pvol); // i.e., W*H*D
+
+  // iterate over the big volume and set the offset for the sub volume
+  mwSize row = 0;
+  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
+  mwSize FH = getVolH(F), FW = getVolW(F), FD = getVolD(F); 
+
+  sv.offset[3] = 0; // never slide at dim 4 !
+  for (mwSize k = 0; k < (D - FD + 1); ++k) {
+    sv.offset[2] = k;
+    for (mwSize j = 0; j < (W - FW + 1); ++j) {
+      sv.offset[1] = j;
+      for (mwSize i = 0; i < (H - FH + 1); ++i) {
+        sv.offset[0] = i;
+
+        // copy to convmat(row, :)
+        sv.copy_to_matw_row(convmat, row);
+
+        // step to next row, should be consistent with i,j,k,p
+        ++row;
+      } // i
+    } // j
+  }// k
 
 }
 
-void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize i)
+void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
 {
+  // TODO: code refactoring. almost the same with vol_to_convmat
+
+  // v: [H,   W,   D,   P]
+  // F: [H',  W',  D',  P]
+  // Y: [H'', W'', D'', 1]
+  // convmat: [H''W''D''  H'W'D'P]
+  subvol4D sv;
+  sv.beg = getVolInstDataBeg<float>(pvol, iInst);
+  sv.size[0] = getVolH(F); 
+  sv.size[1] = getVolW(F);
+  sv.size[2] = getVolD(F);
+  sv.size[3] = getVolP(F);
+  sv.stride[0] = 1;
+  sv.stride[1] = getVolH(pvol);
+  sv.stride[2] = getVolH(pvol)*getVolW(pvol);
+  sv.stride[3] = numelVol(pvol); // i.e., W*H*D
+
+  // iterate over the big volume and set the offset for the sub volume
+  mwSize row = 0;
+  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
+  mwSize FH = getVolH(F), FW = getVolW(F), FD = getVolD(F); 
+
+  sv.offset[3] = 0; // never slide at dim 4
+  for (mwSize k = 0; k < (D - FD + 1); ++k) { // slide at dim 3
+    sv.offset[2] = k;
+    for (mwSize j = 0; j < (W - FW + 1); ++j) { // slide at dim 2
+      sv.offset[1] = j;
+      for (mwSize i = 0; i < (H - FH + 1); ++i) { // slide at dim 1
+        sv.offset[0] = i;
+
+        // copy to convmat(row, :)
+        sv.copy_and_inc_from_matw_row(convmat, row);
+
+        // step to next row, should be consistent with i,j,k,p
+        ++row;
+      } // i
+    } // j
+  }// k
 
 }
 
 void conv3d_cpu::init_u()
 {
-  u.H = numelVol(Y);
+  if (Y != 0)
+    u.H = numelVol(Y);
+  else if (dY != 0)
+    u.H = numelVol(dY);
+  else
+    mexErrMsgTxt(THE_CMD);
+
   u.W = 1;
   mwSize nelem = u.H * u.W ;
   u.beg = (float*)mxMalloc( nelem * sizeof(float) );
