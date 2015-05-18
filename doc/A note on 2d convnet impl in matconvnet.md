@@ -81,7 +81,7 @@ row2im(x,
 ```
 
 Remark:
-- The argument names are different in `*.h` and `*.cpp`, don't get confused.
+- The argument names are different in `*.h` and `*.cpp`, don't get confused. In `im2row.hpp` the Matlab's column major convention is used, while in `im2row_xxx.cpp` the C/C++ row major convention is used.
 
 ### Matrix Multiplication
 See the blas doc on [gemm](http://www.math.utah.edu/software/lapack/lapack-blas/sgemm.html) and [gemv](http://www.math.utah.edu/software/lapack/lapack-blas/sgemv.html). A brief explanation:

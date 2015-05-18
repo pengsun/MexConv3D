@@ -15,12 +15,13 @@ private:
   void set_pad    (mxArray const *pa);
 
   // helper: fprop
-  void create_Y  ();
+  void create_Y ();
   matw make_F_ ();
   matw make_Y_ (mwSize i);
   matw make_B_ ();
 
   // helper: bprop
+  void check_X_size ();
   void create_dX ();
   void create_dF ();
   void create_dB ();

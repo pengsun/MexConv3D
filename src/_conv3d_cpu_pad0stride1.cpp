@@ -5,9 +5,7 @@ namespace {
 // helper: sub volume attaching to big volume
 struct subvol4D {
   float* beg;
-  int64_T offset[4];
-  mwSize  sizeBigVol[4];
-
+  mwSize offset[4];
   mwSize size[4];
   mwSize stride[4];
 
@@ -17,35 +15,22 @@ struct subvol4D {
 
 void subvol4D::copy_to_matw_row (matw& the_mat, mwSize row)
 {
-  // init output: ptr element matrix
-  float* pe_mat = the_mat.beg + row; 
+  float* pe_mat = the_mat.beg + row; // ptr element matrix
   
-  // For the sub volume, scan dim3,...,dim0. At each dim,
-  // consider three cases: underflow, regular walking and overflow
   for (mwSize d3 = 0; d3 < size[3]; ++d3) {
-    int64_T d3BigVol = (offset[3] + d3);
-    float* ptr_d3    = d3BigVol*stride[3] + this->beg;
-    bool   d3InRange = (d3BigVol >= 0) && (d3BigVol < sizeBigVol[3]);
+    float* ptr_d3 = (offset[3] + d3)*stride[3] + this->beg;
 
     for (mwSize d2 = 0; d2 < size[2]; ++d2) {
-      int64_T d2BigVol = (offset[2] + d2);
-      float* ptr_d2    = d2BigVol*stride[2] + ptr_d3;
-      bool   d2InRange = (d2BigVol >= 0) && (d2BigVol < sizeBigVol[2]); 
+      float* ptr_d2 = (offset[2] + d2)*stride[2] + ptr_d3;
 
       for (mwSize d1 = 0; d1 < size[1]; ++d1) {
-        int64_T d1BigVol = (offset[1] + d1);
-        float* ptr_d1    = d1BigVol*stride[1] + ptr_d2;
-        bool   d1InRange = (d1BigVol >= 0) && (d1BigVol < sizeBigVol[1]);
+        float* ptr_d1 = (offset[1] + d1)*stride[1] + ptr_d2;
 
         for (mwSize d0 = 0; d0 < size[0]; ++d0) {
-          int64_T d0BigVol = (offset[0] + d0);
-          float* ptr_d0    = d0BigVol*stride[0] + ptr_d1; // ptr element volume
-          bool   d0InRange = (d0BigVol >= 0) && (d0BigVol < sizeBigVol[0]);
-
-          if (d3InRange && d2InRange && d1InRange && d0InRange)
-            *pe_mat = *ptr_d0; // copy the single element if in range
-          else
-            *pe_mat = 0.0; // set to zero if out of range
+          float* pe_vol = (offset[0] + d0)*stride[0] + ptr_d1; // ptr element volume
+          
+          // copy the single element
+          *pe_mat = *pe_vol;
           
           // advance to next matrix element
           pe_mat += the_mat.H;
@@ -58,37 +43,22 @@ void subvol4D::copy_to_matw_row (matw& the_mat, mwSize row)
 
 void subvol4D::copy_and_inc_from_matw_row (matw& the_mat, mwSize row)
 {
-  // TODO: code refactoring. almost the same code with copy_to_matw_row
+  float* pe_mat = the_mat.beg + row; // ptr element matrix
 
-  // init output: ptr element matrix
-  float* pe_mat = the_mat.beg + row; 
-
-  // For the sub volume, scan dim3,...,dim0. At each dim,
-  // consider three cases: underflow, regular walking and overflow
   for (mwSize d3 = 0; d3 < size[3]; ++d3) {
-    int64_T d3BigVol = (offset[3] + d3);
-    float* ptr_d3    = d3BigVol*stride[3] + this->beg;
-    bool   d3InRange = (d3BigVol >= 0) && (d3BigVol < sizeBigVol[3]);
+    float* ptr_d3 = (offset[3] + d3)*stride[3] + this->beg;
 
     for (mwSize d2 = 0; d2 < size[2]; ++d2) {
-      int64_T d2BigVol = (offset[2] + d2);
-      float* ptr_d2    = d2BigVol*stride[2] + ptr_d3;
-      bool   d2InRange = (d2BigVol >= 0) && (d2BigVol < sizeBigVol[2]); 
+      float* ptr_d2 = (offset[2] + d2)*stride[2] + ptr_d3;
 
       for (mwSize d1 = 0; d1 < size[1]; ++d1) {
-        int64_T d1BigVol = (offset[1] + d1);
-        float* ptr_d1    = d1BigVol*stride[1] + ptr_d2;
-        bool   d1InRange = (d1BigVol >= 0) && (d1BigVol < sizeBigVol[1]);
+        float* ptr_d1 = (offset[1] + d1)*stride[1] + ptr_d2;
 
         for (mwSize d0 = 0; d0 < size[0]; ++d0) {
-          int64_T d0BigVol = (offset[0] + d0);
-          float* ptr_d0    = d0BigVol*stride[0] + ptr_d1; // ptr element volume
-          bool   d0InRange = (d0BigVol >= 0) && (d0BigVol < sizeBigVol[0]);
+          float* pe_vol = (offset[0] + d0)*stride[0] + ptr_d1; // ptr element volume
 
-          if (d3InRange && d2InRange && d1InRange && d0InRange)
-            *ptr_d0 += *pe_mat; // copy and increment the single element if in range
-          //else
-          //  do nothing if out of range
+          // copy and increment the single element
+          *pe_vol += *pe_mat;
 
           // advance to next matrix element
           pe_mat += the_mat.H;
@@ -96,7 +66,6 @@ void subvol4D::copy_and_inc_from_matw_row (matw& the_mat, mwSize row)
       } // d1
     } // d2
   } // d3
-
 }
 
 
@@ -137,7 +106,6 @@ void conv3d_cpu::fprop()
 
 void conv3d_cpu::bprop()
 {
-  check_X_size();
   create_dX();
   create_dF();
   create_dB();
@@ -219,18 +187,18 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
 //// impl of helpers
 void conv3d_cpu::set_stride( mxArray const *pa )
 {
-  //mexErrMsgTxt("Option stride not implemented yet. Sorry..."
-  //  "Currently the stride is always 1.\n");
-  if ( !setCArray<mwSize, 3>(pa, this->stride) )
-    mexErrMsgTxt(THE_CMD);
+  mexErrMsgTxt("Option stride not implemented yet. Sorry..."
+    "Currently the stride is always 1.\n");
+  //if ( !setCArray<mwSize, 3>(pa, this->stride) )
+  //  mexErrMsgTxt(THE_CMD);
 }
 
 void conv3d_cpu::set_pad( mxArray const *pa )
 {
-  //mexErrMsgTxt("Option pad not implemented yet. Sorry..."
-  //  "Currently the pad is always 0.\n");
-  if ( !setCArray<mwSize, 6>(pa, this->pad) )
-    mexErrMsgTxt(THE_CMD);
+  mexErrMsgTxt("Option pad not implemented yet. Sorry..."
+    "Currently the pad is always 0.\n");
+  //if ( !setCArray<mwSize, 6>(pa, this->pad) )
+  //  mexErrMsgTxt(THE_CMD);
 }
 
 void conv3d_cpu::create_Y()
@@ -242,15 +210,15 @@ void conv3d_cpu::create_Y()
   if (getVolQ(F) != mxGetNumberOfElements(B)) // #Bias should math the output
     mexErrMsgTxt(THE_CMD);
 
-  if (pad[0]+pad[1]+getVolH(X) < getVolH(F) || // filter size should not be greater than feature map size
-      pad[2]+pad[3]+getVolW(X) < getVolW(F) ||
-      pad[4]+pad[5]+getVolD(X) < getVolD(F) )
+  if (getVolH(X) < getVolH(F) || // filter should not be greater than feature map
+      getVolW(X) < getVolW(F) ||
+      getVolD(X) < getVolD(F) )
     mexErrMsgTxt(THE_CMD);
 
-  // size Y: the right size taking pad and stride into account
-  mwSize HY = (pad[0]+getVolH(X)+pad[1] - getVolH(F))/stride[0] + 1;
-  mwSize WY = (pad[2]+getVolW(X)+pad[3] - getVolW(F))/stride[1] + 1;
-  mwSize DY = (pad[4]+getVolD(X)+pad[5] - getVolD(F))/stride[2] + 1;
+  // size Y TODO: the right size taking pad and stride into account
+  mwSize HY = getVolH(X) - getVolH(F) + 1;
+  mwSize WY = getVolW(X) - getVolW(F) + 1;
+  mwSize DY = getVolD(X) - getVolD(F) + 1;
   mwSize MY = getVolQ(F);
   mwSize NY = getVolN(X);
 
@@ -286,25 +254,6 @@ matw conv3d_cpu::make_B_()
   B_.W   = mxGetNumberOfElements(B);
 
   return B_;
-}
-
-void conv3d_cpu::check_X_size()
-{
-  // TODO: code refactoring. duplicate code with create_Y()
-
-  // size Y: the right size taking pad and stride into account
-  mwSize HY = (pad[0]+getVolH(X)+pad[1] - getVolH(F))/stride[0] + 1;
-  mwSize WY = (pad[2]+getVolW(X)+pad[3] - getVolW(F))/stride[1] + 1;
-  mwSize DY = (pad[4]+getVolD(X)+pad[5] - getVolD(F))/stride[2] + 1;
-  mwSize MY = getVolQ(F);
-  mwSize NY = getVolN(X);
-
-  if (HY != getVolH(this->dY)       ||
-      WY != getVolW(this->dY)       || 
-      DY != getVolD(this->dY)       ||
-      MY != getSzAtDim<4>(this->dY) ||
-      NY != getSzAtDim<5>(this->dY) )
-    mexErrMsgTxt(THE_CMD);
 }
 
 void conv3d_cpu::create_dX()
@@ -384,46 +333,39 @@ void conv3d_cpu::free_convmat()
 
 void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 {
+  // TODO: code refactoring. almost the same with vol_to_convmat
+
   // v: [H,   W,   D,   P]
   // F: [H',  W',  D',  P]
   // Y: [H'', W'', D'', 1]
   // convmat: [H''W''D''  H'W'D'P]
 
-  // the big volume size and the sub volume
-  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
+  // sub volume attaching to the big volume
   subvol4D sv;
   sv.beg = getVolInstDataBeg<float>(pvol, iInst);
   sv.size[0] = getVolH(F); 
   sv.size[1] = getVolW(F);
   sv.size[2] = getVolD(F);
   sv.size[3] = getVolP(F);
-  sv.sizeBigVol[0] = H;
-  sv.sizeBigVol[1] = W;
-  sv.sizeBigVol[2] = D;
-  sv.sizeBigVol[3] = P;
-  sv.stride[0] = 1; // always
-  sv.stride[1] = H;
-  sv.stride[2] = H*W;
-  sv.stride[3] = H*W*D;
+  sv.stride[0] = 1;
+  sv.stride[1] = getVolH(pvol);
+  sv.stride[2] = getVolH(pvol)*getVolW(pvol);
+  sv.stride[3] = numelVol(pvol); // i.e., W*H*D
 
-  // iterate over the big volume... 
-  // ...and set the offset for the sub volume attaching to the big volume
-  int64_T dim2_beg = (-pad[4]), dim2_end = D + pad[5];
-  int64_T dim1_beg = (-pad[2]), dim1_end = W + pad[3];
-  int64_T dim0_beg = (-pad[0]), dim0_end = H + pad[1];
-  int64_T FH = (int64_T)getVolH(F), FW = (int64_T)getVolW(F), FD = (int64_T)getVolD(F); 
+  // iterate over the big volume and set the offset for the sub volume
   mwSize row = 0;
+  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
+  mwSize FH = getVolH(F), FW = getVolW(F), FD = getVolD(F); 
 
-  sv.offset[3] = 0; // never slide at dim3 !
-  for (int64_T k = dim2_beg; k < (dim2_end - FD + 1); k += this->stride[2]) { // slide at dim2
+  sv.offset[3] = 0; // never slide at dim 4 !
+  for (mwSize k = 0; k < (D - FD + 1); ++k) {
     sv.offset[2] = k;
-
-    for (int64_T j = dim1_beg; j < (dim1_end - FW + 1); j += this->stride[1]) { // slide at dim1
+    for (mwSize j = 0; j < (W - FW + 1); ++j) {
       sv.offset[1] = j;
-
-      for (int64_T i = dim0_beg; i < (dim0_end - FH + 1); i += this->stride[0]) { // slide at dim0
+      for (mwSize i = 0; i < (H - FH + 1); ++i) {
         sv.offset[0] = i;
 
+        // copy to convmat(row, :)
         sv.copy_to_matw_row(convmat, row);
 
         // step to next row, should be consistent with i,j,k,p
@@ -442,42 +384,31 @@ void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
   // F: [H',  W',  D',  P]
   // Y: [H'', W'', D'', 1]
   // convmat: [H''W''D''  H'W'D'P]
-
-  // the big volume size and the sub volume
-  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
   subvol4D sv;
   sv.beg = getVolInstDataBeg<float>(pvol, iInst);
   sv.size[0] = getVolH(F); 
   sv.size[1] = getVolW(F);
   sv.size[2] = getVolD(F);
   sv.size[3] = getVolP(F);
-  sv.sizeBigVol[0] = H;
-  sv.sizeBigVol[1] = W;
-  sv.sizeBigVol[2] = D;
-  sv.sizeBigVol[3] = P;
-  sv.stride[0] = 1; // always
-  sv.stride[1] = H;
-  sv.stride[2] = H*W;
-  sv.stride[3] = H*W*D;
+  sv.stride[0] = 1;
+  sv.stride[1] = getVolH(pvol);
+  sv.stride[2] = getVolH(pvol)*getVolW(pvol);
+  sv.stride[3] = numelVol(pvol); // i.e., W*H*D
 
-  // iterate over the big volume... 
-  // ...and set the offset for the sub volume attaching to the big volume
-  int64_T dim2_beg = (-pad[4]), dim2_end = D + pad[5];
-  int64_T dim1_beg = (-pad[2]), dim1_end = W + pad[3];
-  int64_T dim0_beg = (-pad[0]), dim0_end = H + pad[1];
-  int64_T FH = (int64_T)getVolH(F), FW = (int64_T)getVolW(F), FD = (int64_T)getVolD(F); 
+  // iterate over the big volume and set the offset for the sub volume
   mwSize row = 0;
+  mwSize H = getVolH(pvol), W = getVolW(pvol), D = getVolD(pvol), P = getVolP(pvol);
+  mwSize FH = getVolH(F), FW = getVolW(F), FD = getVolD(F); 
 
-  sv.offset[3] = 0; // never slide at dim3 !
-  for (int64_T k = dim2_beg; k < (dim2_end - FD + 1); k += this->stride[2]) { // slide at dim2
+  sv.offset[3] = 0; // never slide at dim 4
+  for (mwSize k = 0; k < (D - FD + 1); ++k) { // slide at dim 3
     sv.offset[2] = k;
-
-    for (int64_T j = dim1_beg; j < (dim1_end - FW + 1); j += this->stride[1]) { // slide at dim1
+    for (mwSize j = 0; j < (W - FW + 1); ++j) { // slide at dim 2
       sv.offset[1] = j;
-
-      for (int64_T i = dim0_beg; i < (dim0_end - FH + 1); i += this->stride[0]) { // slide at dim0
+      for (mwSize i = 0; i < (H - FH + 1); ++i) { // slide at dim 1
         sv.offset[0] = i;
 
+        // copy to convmat(row, :)
         sv.copy_and_inc_from_matw_row(convmat, row);
 
         // step to next row, should be consistent with i,j,k,p

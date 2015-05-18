@@ -46,5 +46,5 @@ yy = Y(beg(1), beg(2), beg(3), q, iInst);
 yy2 = sum( xx(:).*ff(:) ) + bb;
 %
 % assert( abs(yy-yy2) < eps );
-fprintf('numerical differecen between caluclation and expection: %10.9f\n',...
+fprintf('numeric diff: %10.9f\n',...
   abs(yy-yy2));
