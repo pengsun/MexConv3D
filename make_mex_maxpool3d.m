@@ -17,6 +17,7 @@ opt{end+1} = '-largeArrayDims';
 opt{end+1} = '-outdir';
 opt{end+1} = dir_root;
 
+%% options: openmp
 str = computer('arch');
 switch str(1:3)
   case 'win' 

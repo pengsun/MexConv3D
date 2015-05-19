@@ -1,21 +1,12 @@
 %% data
-sz = [8,8,8, 5,9];
+sz = [7,8,5, 5,9];
+pool   = [3,2,4];
+stride = [3,2,4];
+pad    = [1,1,  0,0, 2,1];
 x = rand(sz, 'single');
-% fprop
-[y, ind] = mex_maxpool3d(x);
-% bprop (in ConvNet it should be dy, here we just use y for illustration)
-xx = mex_maxpool3d(y,ind);
-%% validate
-ix  = 5:6;
-iy = 3;
-yvalue = y(iy,iy,iy, 2,5);
-subx = x(ix,ix,ix, 2,5);
-subxx = xx(ix,ix,ix, 2,5);
-%
-assert( yvalue == max(subx(:)) )
-assert( yvalue == max(subxx(:)) )
-[~, im_x]  = max( subx(:) );
-[~, im_xx] = max( subxx(:) );
-assert( im_x == im_xx )
-
-disp(yvalue)
+%% fprop
+[y, ind] = mex_maxpool3d(x,...
+  'pool',pool, 'stride',stride, 'pad',pad);
+%% bprop (in ConvNet it should be dy, here we just use y for illustration)
+xx = mex_maxpool3d(y,ind,...
+  'pool',pool, 'stride',stride, 'pad',pad);
