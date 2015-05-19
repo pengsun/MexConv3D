@@ -2,13 +2,12 @@
 #include "src/maxpool3d.h"
 #include "mex_shorthand.h"
 
+
 namespace {
-  
-factory_mp3d* factory = 0;
-maxpool3d*    h = 0;
+
+maxpool3d* h = 0;
 void cleanup ()
 {
-  safe_delete(factory);
   safe_delete(h);
 }
 
@@ -22,14 +21,14 @@ void mexFunction(int no, mxArray       *vo[],
 {
   // init resource
   mexAtExit(cleanup);
-  assert(factory==0);
+
 #ifdef WITHCUDNN
-  factory = new factory_mp3d_withcudnn;
+  factory_mp3d_withcudnn factory;
 #else
-  factory = new factory_mp3d_homebrew;
+  factory_mp3d_homebrew factory;
 #endif
-  assert(h==0);
-  h = factory->create(vi[0]);
+  cleanup();
+  h = factory.create(vi[0]);
 
   // parse input
   maxpool3d::CALL_TYPE ct = h->parse_and_set(no,vo,ni,vi);

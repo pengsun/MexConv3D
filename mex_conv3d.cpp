@@ -3,12 +3,10 @@
 #include "mex_shorthand.h"
 
 namespace {
-  
-factory_c3d* factory = 0;
+
 conv3d*      h = 0;
 void cleanup ()
 {
-  safe_delete(factory);
   safe_delete(h);
 }
 
@@ -20,14 +18,13 @@ void mexFunction(int no, mxArray       *vo[],
 {
   // init resource
   mexAtExit(cleanup);
-  assert(factory==0);
 #ifdef WITHCUDNN
-  factory = new factory_c3d_withcudnn;
+  factory_c3d_withcudnn factory;
 #else
-  factory = new factory_c3d_homebrew;
+  factory_c3d_homebrew factory;
 #endif
-  assert(h==0);
-  h = factory->create(vi[0],vi[1],vi[2]); // always expect X, F, B 
+  cleanup();
+  h = factory.create(vi[0],vi[1],vi[2]); // always expect X, F, B 
 
   // parse input
   conv3d::CALL_TYPE ct = h->parse_and_set(no,vo,ni,vi);
