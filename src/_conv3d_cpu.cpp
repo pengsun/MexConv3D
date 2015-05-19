@@ -408,9 +408,12 @@ void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 
   // iterate over the big volume... 
   // ...and set the offset for the sub volume attaching to the big volume
-  int64_T dim2_beg = (-pad[4]), dim2_end = D + pad[5];
-  int64_T dim1_beg = (-pad[2]), dim1_end = W + pad[3];
-  int64_T dim0_beg = (-pad[0]), dim0_end = H + pad[1];
+  int64_T dim2_beg = -static_cast<int64_T>(pad[4]), 
+          dim2_end =  static_cast<int64_T>(D + pad[5]);
+  int64_T dim1_beg = -static_cast<int64_T>(pad[2]),
+          dim1_end =  static_cast<int64_T>(W + pad[3]);
+  int64_T dim0_beg = -static_cast<int64_T>(pad[0]), 
+          dim0_end =  static_cast<int64_T>(H + pad[1]);
   int64_T FH = (int64_T)getVolH(F), FW = (int64_T)getVolW(F), FD = (int64_T)getVolD(F); 
   mwSize row = 0;
 
@@ -462,9 +465,12 @@ void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
 
   // iterate over the big volume... 
   // ...and set the offset for the sub volume attaching to the big volume
-  int64_T dim2_beg = (-pad[4]), dim2_end = D + pad[5];
-  int64_T dim1_beg = (-pad[2]), dim1_end = W + pad[3];
-  int64_T dim0_beg = (-pad[0]), dim0_end = H + pad[1];
+  int64_T dim2_beg = -static_cast<int64_T>(pad[4]), 
+          dim2_end =  static_cast<int64_T>(D + pad[5]);
+  int64_T dim1_beg = -static_cast<int64_T>(pad[2]),
+          dim1_end =  static_cast<int64_T>(W + pad[3]);
+  int64_T dim0_beg = -static_cast<int64_T>(pad[0]), 
+          dim0_end =  static_cast<int64_T>(H + pad[1]);
   int64_T FH = (int64_T)getVolH(F), FW = (int64_T)getVolW(F), FD = (int64_T)getVolD(F); 
   mwSize row = 0;
 

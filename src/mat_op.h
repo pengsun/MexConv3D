@@ -4,7 +4,7 @@
 
 // 2D matrix thin wrapper over raw data pointer
 // presume continuous memory
-// caller owns data and assure the assignment 
+// caller owns data and assures assignment 
 struct matw {
   float *beg;
   mwSize H, W;
