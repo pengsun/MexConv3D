@@ -29,7 +29,7 @@ opt{end+1} = dir_root;
 %     opt{end+1} = '-lmwblas';
 % end
 
-opt{end+1} = '-lmwblas'; % works for both Windows or Unix?
+opt{end+1} = '-lmwblas'; % works for both Windows and Unix?
 %% options: openmp
 % str = computer('arch');
 % switch str(1:3)
