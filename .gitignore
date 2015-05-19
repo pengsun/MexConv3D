@@ -1,2 +1,6 @@
 *.pdb
 *.mexw32
+*.asv
+*.obj
+/temp/*.mexw64
+/*.mexw64
