@@ -22,15 +22,7 @@ for i = 1 : numel(fns)
     cmd = sprintf('%s.%s()', dir_name, nm);
     fprintf('running %s...\n', cmd);
     
-    %eval(cmd);
-    
-    try
-      eval( cmd );
-    catch er
-      fprintf('error occured!\n');
-      disp(er.message);
-      continue;
-    end % try
+    eval(cmd);
     
   end % if
   

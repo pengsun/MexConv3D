@@ -9,12 +9,15 @@ classdef dg_cpu
     pad;
     
     desc;
-    ran;
+    ran; % numeric range
+    ep;  % epsilon
   end
   
   methods
     function ob = dg_cpu(szX, pool, stride, pad, desc)
-      ob.ran = 10;
+      
+      ob.ep  = 1e-2;
+      ob.ran = 100;
       
       ob.X = ob.ran * randn(szX, 'single');
       
