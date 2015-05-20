@@ -4,7 +4,7 @@
 
 
 namespace {
-  const float VERY_NEGATIVE_NUM = -1e-8;
+  const float VERY_NEGATIVE_NUM = -1e20;
 }
 
 //// impl of public methods
@@ -40,7 +40,7 @@ void maxpool3d_cpu::fprop()
 
           // init value for current Y
           float  vmax = VERY_NEGATIVE_NUM;
-          double imax = -1.0;
+          double imax = -43.0;
 
           // set the window on X for current Y element (yy): the offset can be negative
           int64_T xwin_offset[3];
@@ -73,7 +73,7 @@ void maxpool3d_cpu::fprop()
                 float vx = *(xwin_beg + r + s*xH + t*xHW);
                 if (vx >= vmax) { // found new max value?
                   vmax = vx;
-                  imax = double( (xwin_offset[0]+r) + (xwin_offset[1]+s)*xH + (xwin_offset[2]+t)*xHW + n*xHWD );
+                  imax = double( xr + xs*xH + xt*xHW + n*xHWD );
                 } // if
 
               } // r
