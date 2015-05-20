@@ -1,1 +1,3 @@
-A sandbox. All files will be removed.
+A sandbox. 
+
+All files in this folder will be removed.
