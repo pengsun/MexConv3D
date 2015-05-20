@@ -105,11 +105,13 @@ void maxpool3d_cpu::bprop()
   // iterate over dY, set dX
   mwSize num = mxGetNumberOfElements(this->dY);
   
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (int64_T n = 0; n < num; ++n) {
     mwSize ix = mwSize( ii[n] );
     ix -= 1; // matlab 1-base -> C++ 0-base
-    *(dxx + ix) = dyy[n];
+
+    // accumulate! there can be overlapping ix!
+    dxx[ix] += dyy[n];
   }
 }
 

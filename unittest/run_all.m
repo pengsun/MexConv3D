@@ -1,4 +1,14 @@
-dir_name = 't_c3d';
+function run_all ()
+%% conv 3d
+% dir_name = 't_c3d';
+% runInDir(dir_name);
+
+%% max pooling 3d
+dir_name = 't_mp3d';
+runInDir(dir_name);
+
+function runInDir (dir_name)
+
 this_dir = fileparts( mfilename('fullpath') );
 tar_dir  = fullfile(this_dir, ['+',dir_name]);
 
@@ -12,13 +22,15 @@ for i = 1 : numel(fns)
     cmd = sprintf('%s.%s()', dir_name, nm);
     fprintf('running %s...\n', cmd);
     
-    try
-      eval( cmd );
-    catch er
-      fprintf('error occured!\n');
-      disp(er.message);
-      continue;
-    end % try
+    eval(cmd);
+    
+%     try
+%       eval( cmd );
+%     catch er
+%       fprintf('error occured!\n');
+%       disp(er.message);
+%       continue;
+%     end % try
     
   end % if
   
