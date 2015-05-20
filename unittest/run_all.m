@@ -1,7 +1,7 @@
 function run_all ()
 %% conv 3d
-% dir_name = 't_c3d';
-% runInDir(dir_name);
+dir_name = 't_c3d';
+runInDir(dir_name);
 
 %% max pooling 3d
 dir_name = 't_mp3d';
@@ -22,15 +22,15 @@ for i = 1 : numel(fns)
     cmd = sprintf('%s.%s()', dir_name, nm);
     fprintf('running %s...\n', cmd);
     
-    eval(cmd);
+    %eval(cmd);
     
-%     try
-%       eval( cmd );
-%     catch er
-%       fprintf('error occured!\n');
-%       disp(er.message);
-%       continue;
-%     end % try
+    try
+      eval( cmd );
+    catch er
+      fprintf('error occured!\n');
+      disp(er.message);
+      continue;
+    end % try
     
   end % if
   
