@@ -55,8 +55,8 @@ classdef unit
       Y = mex_conv3d(X,F,B, opts{:});
       fprintf('Y: [%d %d %d %d %d]\n', size5d(Y));
       % bprop
-      dzdY = ones(size(Y), 'like', Y);
-      % dzdY = ones(size(Y), 'single');
+%       dzdY = ones(size(Y), 'like', Y);
+      dzdY = ones(size(Y), 'single');
       [dzdX,dzdF,dzdB] = mex_conv3d(X,F,B, dzdY, opts{:});
       
       % grad chk

@@ -1,11 +1,12 @@
-function tc_2()
+function tc_2(dg)
+desc = 'regular case, pool = stride, non-zero pad';
+%%
 sz = [7,8,5, 5,9];
 pool   = [3,2,4];
 stride = [3,2,4];
 pad    = [1,1,  0,0, 2,1];
-desc = 'cpu array, regular case, pool = stride, non-zero pad';
 
-h = t_mp3d.dg_cpu(sz, pool, stride, pad, desc);
+h = dg(sz, pool, stride, pad, desc);
 
 hu = t_mp3d.unit(h);
 hu.run();

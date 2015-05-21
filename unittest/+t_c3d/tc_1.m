@@ -1,25 +1,46 @@
-function tc_1()
+function tc_1(dg)
+desc = 'regular case, no padding, stride 1';
 %%
 szX = [9, 9, 1, 1, 1];
 szF = [3, 3, 1, 1, 1];
 szB = [1, 1];
 stride = [1,1,1];
 pad = [0,0, 0,0, 0,0];
-desc = 'cpu array, regular case, no padding, stride 1';
 
-h = t_c3d.dg_cpu(szX,szF,szB, stride, pad, desc);
+h = dg(szX,szF,szB, stride, pad, desc);
 
 hu = t_c3d.unit(h);
 hu.run();
 %%
-szX = [8, 8, 8, 2, 1];
-szF = [3, 3, 3, 2, 4];
-szB = [1, 4];
+szX = [7, 5, 6, 2, 1];
+szF = [2, 3, 4, 2, 3];
+szB = [1, 3];
 stride = [1,1,1];
 pad = [0,0, 0,0, 0,0];
-desc = 'cpu array, regular case, no padding, stride 1';
 
-h = t_c3d.dg_cpu(szX,szF,szB, stride, pad, desc);
+h = dg(szX,szF,szB, stride, pad, desc);
+
+hu = t_c3d.unit(h);
+hu.run();
+%%
+szX = [4, 3, 5, 4, 1];
+szF = [2, 1, 3, 4, 5];
+szB = [1, 5];
+stride = [1,1,1];
+pad = [0,0, 0,0, 0,0];
+
+h = dg(szX,szF,szB, stride, pad, desc);
+
+hu = t_c3d.unit(h);
+hu.run();
+%%
+szX = [16, 8, 4, 5, 3];
+szF = [2, 4, 3, 5, 2];
+szB = [1, 2];
+stride = [1,1,1];
+pad = [0,0, 0,0, 0,0];
+
+h = dg(szX,szF,szB, stride, pad, desc);
 
 hu = t_c3d.unit(h);
 hu.run();

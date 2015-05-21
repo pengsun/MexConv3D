@@ -83,8 +83,8 @@ classdef unit
       assert( all( tmp(:)==Y(:) ) );
       % 
       fprintf('bprop: generating all one dzdy, calculating dzdx...\n');
-      %dzdy = ones(size(Y), 'single');
-      dzdy = ones(size(Y),'like',Y);
+      dzdy = ones(size(Y), 'single');
+      %dzdy = ones(size(Y),'like',Y);
       dzdx = mex_maxpool3d(dzdy,ind,...
         'pool',pool, 'stride',stride, 'pad',pad);
       %

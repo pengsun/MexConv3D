@@ -1,5 +1,5 @@
-classdef dg_cpu
-  %DG_CPU Summary of this class goes here
+classdef dg_gpu
+  %DG_GPU Summary of this class goes here
   %   Detailed explanation goes here
   
   properties
@@ -15,14 +15,14 @@ classdef dg_cpu
   end
   
   methods
-    function ob = dg_cpu(szX, szF, szB, stride, pad, desc)
+    function ob = dg_gpu(szX, szF, szB, stride, pad, desc)
       
-      ob.ep  = 1e-2;
-      ob.ran = 100;
+      ob.ep  = gpuArray(1e-2);
+      ob.ran = gpuArray(100);
       
-      ob.X = ob.ran * randn(szX, 'single');
-      ob.F = ob.ran * randn(szF, 'single');
-      ob.B = ob.ran * randn(szB, 'single');
+      ob.X = ob.ran * gpuArray.randn(szX, 'single');
+      ob.F = ob.ran * gpuArray.randn(szF, 'single');
+      ob.B = ob.ran * gpuArray.randn(szB, 'single');
       
       ob.stride = [];
       if (~isempty(stride))
@@ -34,7 +34,7 @@ classdef dg_cpu
         ob.pad = pad;
       end
       
-      ob.desc = ['cpu array ', desc];
+      ob.desc = ['gpu array ', desc];
     end % dg_cpu
     
   end % methods
