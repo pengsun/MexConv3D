@@ -124,31 +124,32 @@ maxpool3d::CALL_TYPE maxpool3d_cpu::parse_and_set( int no, mxArray *vo[], int ni
   // fprop or bprop?
   if (no == 2) {
     if ( ni < 1 || !mxIsSingle(vi[0]) ) 
-      mexErrMsgTxt(THE_CMD);
+      throw mp3d_ex("For fprop(), there should be at least one input, X, of SINGLE type.");
 
     ct = FPROP;
     n_opt = 1;
     this->X = (mxArray*) vi[0]; // we won't change input!
   } else if (no == 1) {
     if ( ni < 2 || !mxIsSingle(vi[0]) || !mxIsDouble(vi[1]) ) 
-      mexErrMsgTxt(THE_CMD);
+      throw mp3d_ex("For bprop(): there should be at least 2 arguments, X, ind.\n"
+                    "The feature map X must be SINGLE, the max index ind must be double.");
 
     ct = BPROP;
     n_opt = 2;
     this->dY  = (mxArray*) vi[0]; // we won't change input!
     this->ind = (mxArray*) vi[1];
   } else {
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("Unrecognized arguments/way of calling.");
   }
 
   // parse option/value pairs
-  if ( ((ni-n_opt)%2) != 0 ) // imbalance option/value
-    mexErrMsgTxt(THE_CMD);
+  if ( ((ni-n_opt)%2) != 0 )
+    throw mp3d_ex("Imbalanced option/value pairs.");
   for (int i = n_opt; i < ni; i+=2) {
     if      (isStrEqual(vi[i], "pool"))   this->set_pool(vi[i+1]);
     else if (isStrEqual(vi[i], "stride")) this->set_stride(vi[i+1]);
     else if (isStrEqual(vi[i], "pad"))    this->set_pad(vi[i+1]);
-    else                                  mexErrMsgTxt(THE_CMD);
+    else                                  throw mp3d_ex("Unrecognized option/value pairs.");
   } // for i
 
   return ct;
@@ -158,19 +159,19 @@ maxpool3d::CALL_TYPE maxpool3d_cpu::parse_and_set( int no, mxArray *vo[], int ni
 void maxpool3d_cpu::set_pool( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 3>(pa, this->pool) )
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("The length of option pool must be 1 or 3.");
 }
 
 void maxpool3d_cpu::set_stride( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 3>(pa, this->stride) )
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("The length of option stride must be 1 or 3.");
 }
 
 void maxpool3d_cpu::set_pad( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 6>(pa, this->pad) )
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("The length of option pad must be 1 or 6.");
 }
 
 void maxpool3d_cpu::create_Y()
@@ -179,14 +180,12 @@ void maxpool3d_cpu::create_Y()
   //mwSize ndimX = mxGetNumberOfDimensions(X);
   //if (ndimX < 3) mexErrMsgTxt(THE_CMD);
 
-  //
   check_pad_pool();
 
-  // pooling window size should not be greater than feature map size
   if (pad[0]+pad[1]+getVolH(X) < pool[0] || 
       pad[2]+pad[3]+getVolW(X) < pool[1] ||
       pad[4]+pad[5]+getVolD(X) < pool[2] )
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("pooling window size should not be greater than feature map size.");
 
   // size Y: the right size taking into account pad and stride
   mwSize HY = (pad[0]+getVolH(X)+pad[1] - pool[0])/stride[0] + 1;
@@ -208,7 +207,7 @@ void maxpool3d_cpu::create_dX()
 {
   // check ind & dY
   if (!mxIsDouble(ind) || !mxIsSingle(dY)) 
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("In bprop(): dY must be SINGLE, ind must be double.");
 
   //
   check_pad_pool();
@@ -230,5 +229,5 @@ void maxpool3d_cpu::check_pad_pool()
   if ( (pad[0]+pad[1]) >= pool[0] ||
        (pad[2]+pad[3]) >= pool[1] ||
        (pad[4]+pad[5]) >= pool[2] )
-    mexErrMsgTxt(THE_CMD);
+    throw mp3d_ex("Pool size must be strictly larger than (sum of lower, higher) pad size.");
 }

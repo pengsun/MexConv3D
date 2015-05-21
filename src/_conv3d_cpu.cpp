@@ -177,8 +177,11 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
 
   // fprop or bprop?
   if (no == 1) {
-    if ( ni < 3 || !mxIsSingle(vi[0]) || !mxIsSingle(vi[1]) || !mxIsSingle(vi[2]) ) 
-      mexErrMsgTxt(THE_CMD);
+    if ( ni < 3)
+      throw conv3d_ex("Too few input arguments for fprop(). At least three: X, F, B.");
+      
+    if (!mxIsSingle(vi[0]) || !mxIsSingle(vi[1]) || !mxIsSingle(vi[2]) ) 
+      throw conv3d_ex("The first three arguments X, F, B should be SINGLE type.");
 
     ct = FPROP;
     n_opt = 3;
@@ -188,10 +191,10 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
   } 
   else if (no == 3) {
     if ( ni < 4 ) 
-      mexErrMsgTxt(THE_CMD);
+      throw conv3d_ex("Too few input arguments for bprop(). At least four: X, F, B, dZdY.");
     if ( !mxIsSingle(vi[0]) || !mxIsSingle(vi[1]) ||
          !mxIsSingle(vi[2]) || !mxIsSingle(vi[3]) )
-      mexErrMsgTxt(THE_CMD);
+      throw conv3d_ex("The first four arguments X, F, B, dZdY should be SINGLE type");
 
     ct = BPROP;
     n_opt = 4;
@@ -201,16 +204,16 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
     dY = (mxArray*) vi[3];
   } 
   else {
-    mexErrMsgTxt(THE_CMD);
+    throw conv3d_ex("Unrecognized way of calling.");
   }
 
   // parse option/value pairs
-  if ( ((ni-n_opt)%2) != 0 ) // imbalance option/value
-    mexErrMsgTxt(THE_CMD);
+  if ( ((ni-n_opt)%2) != 0 ) // 
+    throw conv3d_ex("Bad arguments: imbalanced option/value.");
   for (int i = n_opt; i < ni; i+=2) {
     if (isStrEqual(vi[i], "stride"))   this->set_stride(vi[i+1]);
     else if (isStrEqual(vi[i], "pad")) this->set_pad(vi[i+1]);
-    else                               mexErrMsgTxt(THE_CMD);
+    else                               throw conv3d_ex("Bad arguments: unrecognized option/value.");
   } // for i
 
   return ct;
@@ -219,33 +222,29 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
 //// impl of helpers
 void conv3d_cpu::set_stride( mxArray const *pa )
 {
-  //mexErrMsgTxt("Option stride not implemented yet. Sorry..."
-  //  "Currently the stride is always 1.\n");
   if ( !setCArray<mwSize, 3>(pa, this->stride) )
-    mexErrMsgTxt(THE_CMD);
+    throw conv3d_ex("The length of option stride should be either 1 or 3.");
 }
 
 void conv3d_cpu::set_pad( mxArray const *pa )
 {
-  //mexErrMsgTxt("Option pad not implemented yet. Sorry..."
-  //  "Currently the pad is always 0.\n");
   if ( !setCArray<mwSize, 6>(pa, this->pad) )
-    mexErrMsgTxt(THE_CMD);
+    throw conv3d_ex("The length of option pad should be either 1 or 6.");
 }
 
 void conv3d_cpu::create_Y()
 {
   // check input X and filter F, B
-  if (getVolP(F) != getVolM(X))  // #feature maps should match
-    mexErrMsgTxt(THE_CMD);
+  if (getVolP(F) != getVolM(X))  // 
+    throw conv3d_ex("#feature maps of F and X should match: size(F,4)==size(X,4).");
 
-  if (getVolQ(F) != mxGetNumberOfElements(B)) // #Bias should math the output
-    mexErrMsgTxt(THE_CMD);
+  if (getVolQ(F) != mxGetNumberOfElements(B)) 
+    throw conv3d_ex("#Bias should match the output feature map: size(F,5)==size(B,2).");
 
-  if (pad[0]+pad[1]+getVolH(X) < getVolH(F) || // filter size should not be greater than feature map size
+  if (pad[0]+pad[1]+getVolH(X) < getVolH(F) || 
       pad[2]+pad[3]+getVolW(X) < getVolW(F) ||
       pad[4]+pad[5]+getVolD(X) < getVolD(F) )
-    mexErrMsgTxt(THE_CMD);
+    throw conv3d_ex("Filter size should not be greater than feature map size.");
 
   // size Y: the right size taking pad and stride into account
   mwSize HY = (pad[0]+getVolH(X)+pad[1] - getVolH(F))/stride[0] + 1;
@@ -304,7 +303,7 @@ void conv3d_cpu::check_X_size()
       DY != getVolD(this->dY)       ||
       MY != getSzAtDim<4>(this->dY) ||
       NY != getSzAtDim<5>(this->dY) )
-    mexErrMsgTxt(THE_CMD);
+    throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
 }
 
 void conv3d_cpu::create_dX()
@@ -364,12 +363,11 @@ matw conv3d_cpu::make_dB_()
 
 void conv3d_cpu::init_convmat()
 {
+  assert( (Y != 0) || (dY != 0) );
   if (Y != 0) // in FPROP, Y has been set
     convmat.H = numelVol(Y);
-  else if (dY != 0) // in BPROP, dY has been set
+  else // (dY != 0), in BPROP, dY has been set
     convmat.H = numelVol(dY);
-  else
-    mexErrMsgTxt(THE_CMD);
 
   convmat.W = numelVol(F) * getVolP(F);
   mwSize nelem = convmat.H * convmat.W;
@@ -496,12 +494,11 @@ void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
 
 void conv3d_cpu::init_u()
 {
+  assert( (Y != 0) || (dY != 0) );
   if (Y != 0)
     u.H = numelVol(Y);
-  else if (dY != 0)
+  else // (dY != 0)
     u.H = numelVol(dY);
-  else
-    mexErrMsgTxt(THE_CMD);
 
   u.W = 1;
   mwSize nelem = u.H * u.W ;

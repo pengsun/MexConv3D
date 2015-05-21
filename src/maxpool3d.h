@@ -1,5 +1,6 @@
 #pragma once
 #include "mex.h"
+#include <exception>
 
 //// the transformer
 struct maxpool3d {
@@ -26,7 +27,7 @@ struct maxpool3d {
 };
 
 
-//// factory
+//// factory: select implementation
 struct factory_mp3d {
   virtual maxpool3d* create (mxArray const *from) = 0;
 };
@@ -38,4 +39,10 @@ struct factory_mp3d_homebrew : public factory_mp3d {
 struct factory_mp3d_withcudnn : public factory_mp3d { 
   // 3D data not implemented in cudnn yet...could be the case in the future?
   maxpool3d* create (mxArray const *from);
+};
+
+
+//// exception: error message carrier
+struct mp3d_ex : public std::exception {
+  mp3d_ex (const char *msg);
 };

@@ -23,7 +23,14 @@ conv3d* factory_c3d_homebrew::create(
   mxArray const *X, mxArray const *F, mxArray const *B, mxArray const *dY)
 {
   if (!mxIsSingle(X) || !mxIsSingle(F) || !mxIsSingle(B))
-    mexErrMsgTxt(conv3d::THE_CMD);
+    throw conv3d_ex("Bad arguments: X, F, B must be SINGLE type.");
 
   return new conv3d_cpu;
+}
+
+//// impl of conv3d_ex
+conv3d_ex::conv3d_ex(const char* msg)
+  : exception(msg)
+{
+
 }
