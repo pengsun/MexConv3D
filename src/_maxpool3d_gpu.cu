@@ -1,6 +1,5 @@
 #include "mex_shorthand.h"
-#include "_maxpool3d_cpu.h"
-#include <omp.h>
+#include "_maxpool3d_gpu.h"
 
 
 namespace {
@@ -8,12 +7,12 @@ namespace {
 }
 
 //// impl of public methods
-maxpool3d_cpu::maxpool3d_cpu()
+maxpool3d_gpu::maxpool3d_gpu()
 {
 
 }
 
-void maxpool3d_cpu::fprop()
+void maxpool3d_gpu::fprop()
 {
   // create output
   this->create_Y();
@@ -91,7 +90,7 @@ void maxpool3d_cpu::fprop()
 
 }
 
-void maxpool3d_cpu::bprop()
+void maxpool3d_gpu::bprop()
 {
   // create dX at input port
   this->create_dX();
@@ -116,7 +115,7 @@ void maxpool3d_cpu::bprop()
   }
 }
 
-maxpool3d::CALL_TYPE maxpool3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxArray const *vi[] )
+maxpool3d::CALL_TYPE maxpool3d_gpu::parse_and_set( int no, mxArray *vo[], int ni, mxArray const *vi[] )
 {
   maxpool3d::CALL_TYPE ct;
   int n_opt = -1;
@@ -139,8 +138,7 @@ maxpool3d::CALL_TYPE maxpool3d_cpu::parse_and_set( int no, mxArray *vo[], int ni
     this->dY  = (mxArray*) vi[0]; // we won't change input!
     this->ind = (mxArray*) vi[1];
   } else {
-    throw mp3d_ex("Unrecognized arguments/way of calling. "
-                  "The output should be either [Y, ind] (fprop) or ind (bprop). ");
+    throw mp3d_ex("Unrecognized arguments/way of calling.");
   }
 
   // parse option/value pairs
@@ -157,25 +155,25 @@ maxpool3d::CALL_TYPE maxpool3d_cpu::parse_and_set( int no, mxArray *vo[], int ni
 }
 
 //// impl of helpers
-void maxpool3d_cpu::set_pool( mxArray const *pa )
+void maxpool3d_gpu::set_pool( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 3>(pa, this->pool) )
     throw mp3d_ex("The length of option pool must be 1 or 3.");
 }
 
-void maxpool3d_cpu::set_stride( mxArray const *pa )
+void maxpool3d_gpu::set_stride( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 3>(pa, this->stride) )
     throw mp3d_ex("The length of option stride must be 1 or 3.");
 }
 
-void maxpool3d_cpu::set_pad( mxArray const *pa )
+void maxpool3d_gpu::set_pad( mxArray const *pa )
 {
   if ( !setCArray<mwSize, 6>(pa, this->pad) )
     throw mp3d_ex("The length of option pad must be 1 or 6.");
 }
 
-void maxpool3d_cpu::create_Y()
+void maxpool3d_gpu::create_Y()
 {
   // check dimensions: should we?
   //mwSize ndimX = mxGetNumberOfDimensions(X);
@@ -199,12 +197,12 @@ void maxpool3d_cpu::create_Y()
   Y = createVol5d(HY, WY, DY, MY, NY);
 }
 
-void maxpool3d_cpu::create_ind()
+void maxpool3d_gpu::create_ind()
 {
   ind = createVol5dLike(Y, mxDOUBLE_CLASS);
 }
 
-void maxpool3d_cpu::create_dX()
+void maxpool3d_gpu::create_dX()
 {
   // check ind & dY
   if (!mxIsDouble(ind) || !mxIsSingle(dY)) 
@@ -225,7 +223,7 @@ void maxpool3d_cpu::create_dX()
   dX = createVol5dZeros(szdX);
 }
 
-void maxpool3d_cpu::check_pad_pool()
+void maxpool3d_gpu::check_pad_pool()
 {
   if ( (pad[0]+pad[1]) >= pool[0] ||
        (pad[2]+pad[3]) >= pool[1] ||

@@ -1,25 +1,21 @@
-function make( varargin )
+function make_all()
 % adopted from the VL_COMPILENN.m which is part of MatConvNet toolbox
-%
+
 % Copyright (C) 2014 Karel Lenc and Andrea Vedaldi.
 % All rights reserved.
 %
 % This file is part of the VLFeat library and is made available under
 % the terms of the BSD license (see the COPYING file).
 
-% Get MatConvNet root directory
+% Get this root directory
 root = fileparts(mfilename('fullpath')) ;
-addpath(fullfile(root)) ;
 
 % --------------------------------------------------------------------
 %                                                        Parse options
 % --------------------------------------------------------------------
 
 opts.enableGpu        = true;
-opts.enableImreadJpeg = false;
 opts.enableCudnn      = false;
-opts.imreadJpegCompileFlags = {} ;
-opts.imreadJpegLinkFlags = {'-ljpeg'};
 opts.verbose          = 1;
 opts.debug            = false;
 opts.cudaMethod       = 'nvcc' ;
@@ -29,19 +25,26 @@ opts.defCudaArch      = [...
   '-gencode=arch=compute_20,code=\"sm_20,compute_20\" '...
   '-gencode=arch=compute_30,code=\"sm_30,compute_30\"'];
 opts.cudnnRoot        = 'local' ;
-opts = vl_argparse(opts, varargin);
 
 % --------------------------------------------------------------------
 %                                                     Files to compile
 % --------------------------------------------------------------------
 
-lib_src = {} ;
-mex_src = {} ;
+%%% mex gatway source
+mex_src = {} ; 
+% mex_src{end+1} = fullfile('mex_conv3d.cpp');
+mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
 
-% GPU-specific files
-if opts.enableGpu
-  lib_src{end+1} = fullfile('', 'temp.cu') ;
+%%% others
+lib_src = {} ; 
+lib_src{end+1} = fullfile('maxpool3d.cpp') ;
+lib_src{end+1} = fullfile('_maxpool3d_cpu.cpp') ;
+if opts.enableGpu % GPU-specific files
+  lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
 end
+lib_src{end+1} = fullfile('mat_op.cpp') ;
+lib_src = cellfun( @(x) fullfile('src',x),...
+  lib_src, 'UniformOutput',false);
 
 
 % --------------------------------------------------------------------
@@ -88,26 +91,23 @@ bld_dir = dir_this ;
 flags.cc = {} ;
 if opts.verbose > 1, flags.cc{end+1} = '-v' ; end
 if opts.debug
-  if ( strcmp(opts.cudaMethod,'nvcc') )
-    flags.cc{end+1} = '-g -G' ;
-  else
-    flags.cc{end+1} = '-g' ;
-  end
+  flags.cc{end+1} = '-g' ;
 else
   flags.cc{end+1} = '-DNDEBUG' ;
 end
 if opts.enableGpu
-  flags.cc{end+1} = '-DENABLE_GPU' ; 
+  flags.cc{end+1} = '-DWITH_GPUARRAY' ; 
 end
 if opts.enableCudnn
   flags.cc{end+1} = '-DENABLE_CUDNN' ;
   flags.cc{end+1} = ['-I' opts.cudnnRoot] ;
 end
-flags.link = {'-lmwblas'} ;
-
-if opts.enableImreadJpeg
-  flags.cc = horzcat(flags.cc, opts.imreadJpegCompileFlags) ;
-  flags.link = horzcat(flags.link, opts.imreadJpegLinkFlags) ;
+flags.cc{end+1} = '-I"./src"';
+% Linker flags
+flags.link = {} ;
+flags.link{end+1} = '-lmwblas' ;
+if opts.debug
+  flags.link{end+1} = '-g';
 end
 
 if opts.enableGpu
@@ -126,14 +126,21 @@ if opts.enableGpu
   end
 end
 
-% For the MEX command
+% For the MEX command: mexcc
 flags.mexcc = flags.cc ;
 flags.mexcc{end+1} = '-cxx' ;
 if strcmp(arch, 'maci64')
   flags.mexcc{end+1} = 'CXXFLAGS=$CXXFLAGS -stdlib=libstdc++' ;
   flags.link{end+1} = 'LDFLAGS=$LDFLAGS -stdlib=libstdc++' ;
 end
-if opts.enableGpu
+if opts.enableGpu 
+  flags.mexcc{end+1} = ...
+    ['-I"',...
+    fullfile(matlabroot, 'toolbox','distcomp','gpu','extern','include'),...
+    '"'] ;
+end
+% For the MEX command: mexcu
+if opts.enableGpu 
   flags.mexcu = flags.cc ;
   flags.mexcu{end+1} = '-cxx' ;
   flags.mexcu(end+1:end+2) = {'-f' mex_cuda_config(root)} ;
@@ -147,6 +154,7 @@ if opts.enableGpu && strcmp(opts.cudaMethod,'nvcc')
   flags.nvcc{end+1} = ['-I"' fullfile(matlabroot, 'toolbox','distcomp','gpu','extern','include') '"'] ;
   if opts.debug
     flags.nvcc{end+1} = '-O0' ;
+    flags.nvcc{end+1} = '-G';
   end
   flags.nvcc{end+1} = '-Xcompiler' ;
   switch arch
@@ -180,7 +188,8 @@ end
 % Intermediate object files
 srcs = horzcat(lib_src,mex_src) ;
 for i = 1 : numel( srcs )
-  if strcmp(ext,'cu') 
+  [~,~,ext] = fileparts( srcs{i} ); 
+  if strcmp(ext,'.cu') 
     if strcmp(opts.cudaMethod,'nvcc')
       nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
     else
@@ -192,16 +201,12 @@ for i = 1 : numel( srcs )
 end
 
 % Link into MEX files
-for i = 1:numel(lib_src)
-  [~,base,~] = fileparts(lib_src{i}) ;
-  objs = toobj(bld_dir,  lib_src(:)) ;
-  %objs = toobj(bld_dir, {mex_src{i}, lib_src{:}}) ;
+for i = 1:numel(mex_src)
+  [~,base,~] = fileparts(mex_src{i}) ;
+  objs = toobj(bld_dir, {mex_src{i}, lib_src{:}}) ;
   mex_link(opts, objs, mex_dir, flags.link) ;
 end
 
-
-% % Reset path adding the mex subdirectory just created
-% vl_setupnn() ;
 
 % --------------------------------------------------------------------
 %                                                    Utility functions

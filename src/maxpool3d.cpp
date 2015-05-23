@@ -1,6 +1,11 @@
 #include "maxpool3d.h"
 #include "_maxpool3d_cpu.h"
 
+#ifdef WITH_GPUARRAY
+#include "gpu/mxGPUArray.h"
+#include "_maxpool3d_gpu.h"
+#endif // WITH_GPUARRAY
+
 //// Impl of maxpool3d
 const char* maxpool3d::THE_CMD = 
   "Bad input or output arguments. The right way to call:\n"
@@ -18,6 +23,15 @@ maxpool3d::maxpool3d()
 
 
 //// Impl of factory
+#ifdef WITH_GPUARRAY
+maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
+{
+  if (mxIsGPUArray(from) == 0)
+    return new maxpool3d_cpu;
+  else 
+    return new maxpool3d_gpu;
+}
+#else 
 maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
 {
   if (!mxIsSingle(from))
@@ -25,6 +39,7 @@ maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
 
   return new maxpool3d_cpu;
 }
+#endif
 
 
 //// Impl of mp3d_ex
