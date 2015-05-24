@@ -1,7 +1,6 @@
 #include "mex.h"
 #include "src/maxpool3d.h"
-#include "mex_shorthand.h"
-
+#include "mex_shorthand2.h"
 
 // [Y,ind] = MEX_MAXPOOL3D(X); forward pass
 // dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
@@ -9,7 +8,6 @@
 void mexFunction(int no, mxArray       *vo[],
                  int ni, mxArray const *vi[])
 {
-
 #ifdef WITHCUDNN
   factory_mp3d_withcudnn factory;
 #else
@@ -18,19 +16,18 @@ void mexFunction(int no, mxArray       *vo[],
 
   maxpool3d* h = 0; // TODO: consider unique_ptr?
   try {
-    h = factory.create(vi[0]);
-
-    maxpool3d::CALL_TYPE ct = h->parse_and_set(no,vo,ni,vi);
+    h = factory.parse_and_create(no, vo, ni, vi);
+    assert( h != 0 );
 
     // do the job and set output
-    if (ct == maxpool3d::FPROP) {
+    if (h->ct == maxpool3d::FPROP) {
       h->fprop();
-      vo[0] = h->Y;
-      vo[1] = h->ind;
+      vo[0] = h->Y.getMxArray();
+      vo[1] = h->ind.getMxArray();
     }
-    if (ct == maxpool3d::BPROP) {
+    if (h->ct == maxpool3d::BPROP) {
       h->bprop();
-      vo[0] = h->dX;
+      vo[0] = h->dX.getMxArray();
     }
 
     // done: cleanup
@@ -40,5 +37,4 @@ void mexFunction(int no, mxArray       *vo[],
     safe_delete(h);
     mexErrMsgTxt(e.what());
   }
-
 }

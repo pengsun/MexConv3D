@@ -1,6 +1,5 @@
 #pragma once
 #include "mex.h"
-#include "mex_shorthand.h"
 
 // 2D matrix thin wrapper over raw data pointer
 // presume continuous memory

@@ -14,10 +14,10 @@ root = fileparts(mfilename('fullpath')) ;
 %                                                        Parse options
 % --------------------------------------------------------------------
 
-opts.enableGpu        = true;
+opts.enableGpu        = false;
 opts.enableCudnn      = false;
 opts.verbose          = 1;
-opts.debug            = false;
+opts.debug            = true;
 opts.cudaMethod       = 'nvcc' ;
 opts.cudaRoot         = [] ;
 opts.cudaArch         = [] ;
@@ -43,6 +43,7 @@ if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
 end
 lib_src{end+1} = fullfile('mat_op.cpp') ;
+lib_src{end+1} = fullfile('mex_shorthand2.cpp') ;
 lib_src = cellfun( @(x) fullfile('src',x),...
   lib_src, 'UniformOutput',false);
 

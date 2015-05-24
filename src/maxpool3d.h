@@ -1,48 +1,61 @@
 #pragma once
-#include "mex.h"
+#include "mex_shorthand2.h"
 #include <exception>
 
 //// the transformer
 struct maxpool3d {
+  enum CALL_TYPE {FPROP, BPROP}; // way of calling 
+
   maxpool3d ();
 
   // options
+  CALL_TYPE ct;
   mwSize pad[6];
   mwSize pool[3];
   mwSize stride[3];
   // intermediate data: max elements index
-  mxArray *ind;
+  xpuMxArrayTW ind;
   // data at input/output port
-  mxArray *X, *dX;
-  mxArray *Y, *dY;
+  xpuMxArrayTW X, dX;
+  xpuMxArrayTW Y, dY;
 
   // forward/backward propagation
-  virtual void fprop () = 0;
-  virtual void bprop () = 0;
+  virtual void fprop () {};
+  virtual void bprop () {};
 
   // helper: command, parser
   static const char * THE_CMD;
-  enum CALL_TYPE {FPROP, BPROP};
-  virtual CALL_TYPE parse_and_set (int no, mxArray *vo[], int ni, mxArray const *vi[]) = 0;
-};
 
-
-//// factory: select implementation
-struct factory_mp3d {
-  virtual maxpool3d* create (mxArray const *from) = 0;
-};
-
-struct factory_mp3d_homebrew : public factory_mp3d {
-  maxpool3d* create (mxArray const *from);
-};
-
-struct factory_mp3d_withcudnn : public factory_mp3d { 
-  // 3D data not implemented in cudnn yet...could be the case in the future?
-  maxpool3d* create (mxArray const *from);
+protected:
+  void check_pad_pool ();
+  void create_Y   ();
+  void create_ind ();
+  void create_dX  ();
 };
 
 
 //// exception: error message carrier
 struct mp3d_ex : public std::exception {
   mp3d_ex (const char *msg);
+};
+
+//// factory: select implementation
+struct factory_mp3d {
+  virtual maxpool3d* parse_and_create (int no, mxArray *vo[], int ni, mxArray const *vi[]) = 0;
+
+};
+
+struct factory_mp3d_homebrew : public factory_mp3d {
+  virtual maxpool3d* parse_and_create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
+
+protected:
+  void set_options(maxpool3d &h, int n_opt, int ni, mxArray const *vi[]);
+  void set_pool   (maxpool3d &h, mxArray const *pa);
+  void set_stride (maxpool3d &h, mxArray const *pa);
+  void set_pad    (maxpool3d &h, mxArray const *pa);
+};
+
+struct factory_mp3d_withcudnn : public factory_mp3d { 
+  // 3D data not implemented in cudnn yet...could be the case in the future?
+  virtual maxpool3d* create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
 };

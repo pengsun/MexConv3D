@@ -1,3 +1,4 @@
+#include "mex_shorthand2.h"
 #include "maxpool3d.h"
 #include "_maxpool3d_cpu.h"
 
@@ -21,30 +22,153 @@ maxpool3d::maxpool3d()
   pad[0] = pad[1] = pad[2] = pad[3] = pad[4] = pad[5] = 0;
 }
 
-
-//// Impl of factory
-#ifdef WITH_GPUARRAY
-maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
+void maxpool3d::check_pad_pool()
 {
-  if (mxIsGPUArray(from) == 0)
-    return new maxpool3d_cpu;
-  else 
-    return new maxpool3d_gpu;
+  if ( (pad[0]+pad[1]) >= pool[0] ||
+       (pad[2]+pad[3]) >= pool[1] ||
+       (pad[4]+pad[5]) >= pool[2] )
+    throw mp3d_ex("Pool size must be strictly larger than (sum of lower, higher) pad size.");
 }
-#else 
-maxpool3d* factory_mp3d_homebrew::create( mxArray const *from )
-{
-  if (!mxIsSingle(from))
-    throw mp3d_ex("Bad argument: X must be SINGLE type.");
 
-  return new maxpool3d_cpu;
+void maxpool3d::create_Y()
+{
+  // check dimensions: should we?
+  //mwSize ndimX = mxGetNumberOfDimensions(X);
+  //if (ndimX < 3) mexErrMsgTxt(THE_CMD);
+
+  check_pad_pool();
+
+  if (pad[0]+pad[1]+X.getSizeAtDim(0) < pool[0] || 
+    pad[2]+pad[3]+X.getSizeAtDim(1) < pool[1] ||
+    pad[4]+pad[5]+X.getSizeAtDim(2) < pool[2] )
+    throw mp3d_ex("pooling window size should not be greater than feature map size.");
+
+  // size Y: the right size taking into account pad and stride
+  mwSize szY[5];
+  szY[0] = (pad[0]+X.getSizeAtDim(0)+pad[1] - pool[0])/stride[0] + 1;
+  szY[1]= (pad[2]+X.getSizeAtDim(1)+pad[3] - pool[1])/stride[1] + 1;
+  szY[2] = (pad[4]+X.getSizeAtDim(2)+pad[5] - pool[2])/stride[2] + 1;
+  szY[3] = X.getSizeAtDim(3);
+  szY[4] = X.getSizeAtDim(4);
+
+  // create Y
+  Y.setMxArray( createVol5d(szY, X.dt) );
 }
-#endif
+
+void maxpool3d::create_ind()
+{
+  ind.setMxArray( createVol5dLike(Y, mxDOUBLE_CLASS) );
+}
+
+void maxpool3d::create_dX()
+{
+  // check ind & dY
+  if ( ind.getElemType()!=mxDOUBLE_CLASS || dY.getElemType()!=mxSINGLE_CLASS ) 
+    throw mp3d_ex("In bprop(): dY must be SINGLE, ind must be double.");
+
+  //
+  check_pad_pool();
+
+  // size dX: the right size taking into account pad and stride
+  mwSize szdX[5] = {0,0,0,1,1};
+  szdX[0] = stride[0]*(dY.getSizeAtDim(0)-1) - (pad[0]+pad[1]) + pool[0];
+  szdX[1] = stride[1]*(dY.getSizeAtDim(1)-1) - (pad[2]+pad[3]) + pool[1];
+  szdX[2] = stride[2]*(dY.getSizeAtDim(2)-1) - (pad[4]+pad[5]) + pool[2];
+  szdX[3] = dY.getSizeAtDim(3);
+  szdX[4] = dY.getSizeAtDim(4);
+
+  // create Y
+  dX.setMxArray( createVol5dZeros(szdX, dY.dt) );
+}
 
 
 //// Impl of mp3d_ex
 mp3d_ex::mp3d_ex(const char* msg)
   : exception(msg)
 {
-  
+
 }
+
+
+//// Impl of factory
+maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mxArray const *vi[])
+{
+  if (ni < 1) 
+    throw mp3d_ex("Too few input arguments.");
+
+  // fprop or bprop?
+  maxpool3d holder;
+  int opt_beg = -1;
+  xpuMxArrayTW::DEV_TYPE dt;
+
+  if (no == 2) {
+    holder.X.setMxArray( (mxArray*) vi[0] ); // we won't change it
+    dt = holder.X.getDevice();
+
+    if ( ni < 1 || (holder.X.getElemType() != mxSINGLE_CLASS) ) 
+      throw mp3d_ex("For fprop(), there should be at least one input, X, of SINGLE type.");
+
+    holder.ct = maxpool3d::FPROP;
+    opt_beg = 1;
+  } else if (no == 1) {
+    holder.dY.setMxArray( (mxArray*)  vi[0]);
+    holder.ind.setMxArray( (mxArray*) vi[1]);
+    dt = holder.dY.getDevice();
+
+    if ( ni < 2 || 
+         holder.dY.getElemType()   != mxSINGLE_CLASS || 
+         holder.ind.getElemType() != mxDOUBLE_CLASS) 
+      throw mp3d_ex("For bprop(): there should be at least 2 arguments, X, ind.\n"
+      "The feature map X must be SINGLE, the max index ind must be double.");
+
+    holder.ct = maxpool3d::BPROP;
+    opt_beg = 2;
+  } else {
+    throw mp3d_ex("Unrecognized arguments/way of calling. "
+      "The output should be either [Y, ind] (fprop) or ind (bprop). ");
+  }
+
+  set_options(holder, opt_beg, ni, vi);
+
+  // create the desired worker and set the parameters
+#ifdef WITH_GPUARRAY
+  if (dt == xpuMxArrayTW::GPU)
+    return new maxpool3d_gpu(holder);
+  else
+    return new maxpool3d_cpu(holder);
+#else
+  return new maxpool3d_cpu(holder);
+#endif // WITH_GPUARRAY
+}
+
+void factory_mp3d_homebrew::set_options(maxpool3d &holder, int opt_beg, int ni, mxArray const *vi[])
+{
+  // parse option/value pairs
+  if ( ((ni-opt_beg)%2) != 0 )
+    throw mp3d_ex("Imbalanced option/value pairs.");
+  for (int i = opt_beg; i < ni; i+=2) {
+    if      (isStrEqual(vi[i], "pool"))   set_pool(holder, vi[i+1]);
+    else if (isStrEqual(vi[i], "stride")) set_stride(holder, vi[i+1]);
+    else if (isStrEqual(vi[i], "pad"))    set_pad(holder, vi[i+1]);
+    else                                  throw mp3d_ex("Unrecognized option/value pairs.");
+  } // for i
+}
+
+void factory_mp3d_homebrew::set_pool(maxpool3d &h, mxArray const *pa )
+{
+  if ( !setCArray<mwSize, 3>(pa, h.pool) )
+    throw mp3d_ex("The length of option pool must be 1 or 3.");
+}
+
+void factory_mp3d_homebrew::set_stride(maxpool3d &h, mxArray const *pa )
+{
+  if ( !setCArray<mwSize, 3>(pa, h.stride) )
+    throw mp3d_ex("The length of option stride must be 1 or 3.");
+}
+
+void factory_mp3d_homebrew::set_pad(maxpool3d &h, mxArray const *pa )
+{
+  if ( !setCArray<mwSize, 6>(pa, h.pad) )
+    throw mp3d_ex("The length of option pad must be 1 or 6.");
+}
+

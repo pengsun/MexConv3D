@@ -9,5 +9,5 @@ dzdy = ones(size(y), 'single');
 dzdx = mex_maxpool3d(dzdy,ind);
 %%
 a1 = x( dzdx > 0 );
-a2 = x( ind(:) );
+a2 = x( sort(ind(:),'ascend') );
 assert( all( a1(:) == a2(:) ) );
