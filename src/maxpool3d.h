@@ -1,5 +1,5 @@
 #pragma once
-#include "mex_shorthand2.h"
+#include "mxWrapper.h"
 #include <exception>
 
 //// the transformer

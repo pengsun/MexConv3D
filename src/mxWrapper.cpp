@@ -1,4 +1,4 @@
-#include "mex_shorthand2.h"
+#include "mxWrapper.h"
 
 
 //// Impl of xpuMxArray
@@ -14,13 +14,46 @@ xpuMxArrayTW::~xpuMxArrayTW()
   pa_cpu = 0;
 #ifdef WITH_GPUARRAY
   if (dt == GPU) {// always do this according to Matlab Doc
+    assert(pa_gpu != 0);
     mxGPUDestroyGPUArray(pa_gpu);
     pa_gpu = 0;
   }
 #endif // WITH_GPUARRAY
 }
 
-mwSize xpuMxArrayTW::getNDims()
+xpuMxArrayTW::xpuMxArrayTW(const xpuMxArrayTW& rhs)
+{
+  // always do these stuff
+  dt     = rhs.dt;
+  pa_cpu = rhs.pa_cpu;
+  pa_gpu = 0;
+
+#ifdef WITH_GPUARRAY
+  if ( rhs.dt == xpuMxArrayTW::GPU ) { // hold its own
+    pa_gpu = (mxGPUArray*)mxGPUCreateFromMxArray(pa_cpu);
+  }
+#endif // WITH_GPUARRAY
+
+  return;
+}
+
+xpuMxArrayTW& xpuMxArrayTW::operator=(const xpuMxArrayTW& rhs)
+{
+  // always do these stuff
+  dt     = rhs.dt;
+  pa_cpu = rhs.pa_cpu;
+  pa_gpu = 0;
+
+#ifdef WITH_GPUARRAY
+  if ( rhs.dt == xpuMxArrayTW::GPU ) { // hold its own
+    pa_gpu = (mxGPUArray*)mxGPUCreateFromMxArray(pa_cpu);
+  }
+#endif // WITH_GPUARRAY
+
+  return *this;
+}
+
+mwSize xpuMxArrayTW::getNDims() const
 {
   if (dt == CPU)
     return mxGetNumberOfDimensions(pa_cpu);
@@ -31,7 +64,7 @@ mwSize xpuMxArrayTW::getNDims()
 #endif // WITH_GPUARRAY
 }
 
-mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim)
+mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim) const
 {
   mwSize ndim = getNDims();
   if (dim >= ndim) return 1;
@@ -45,12 +78,12 @@ mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim)
 #endif // WITH_GPUARRAY
 }
 
-xpuMxArrayTW::DEV_TYPE xpuMxArrayTW::getDevice()
+xpuMxArrayTW::DEV_TYPE xpuMxArrayTW::getDevice() const
 {
   return dt;
 }
 
-mxClassID xpuMxArrayTW::getElemType()
+mxClassID xpuMxArrayTW::getElemType() const
 {
   if (dt == CPU)
     return mxGetClassID(pa_cpu);
@@ -60,7 +93,7 @@ mxClassID xpuMxArrayTW::getElemType()
 #endif // WITH_GPUARRAY
 }
 
-void* xpuMxArrayTW::getDataBeg()
+void* xpuMxArrayTW::getDataBeg() const
 {
   if (dt == CPU)
     return mxGetData(pa_cpu);
@@ -83,11 +116,10 @@ void xpuMxArrayTW::setMxArray(mxArray *pa)
 #endif // WITH_GPUARRAY
 }
 
-mxArray* xpuMxArrayTW::getMxArray()
+mxArray* xpuMxArrayTW::getMxArray() const
 {
   return pa_cpu;
 }
-
 
 //// Impl of shorthand
 mxArray* createVol5d(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
@@ -114,8 +146,28 @@ mxArray* createVol5dZeros(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
 
 mxArray* createVol5dLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE_CLASS*/)
 {
-  // TODO: the right impl !
-  return 0;
+  if (rhs.dt == xpuMxArrayTW::CPU)
+    return mxCreateNumericArray(mxGetNumberOfDimensions(rhs.pa_cpu), 
+                                mxGetDimensions(rhs.pa_cpu), 
+                                tp, mxREAL);
+
+#ifdef WITH_GPUARRAY
+  mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
+                                      mxGPUGetDimensions(rhs.pa_gpu),
+                                      tp, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+  return mxGPUCreateMxArrayOnGPU(p);
+#endif // WITH_GPUARRAY
+}
+
+mwSize numel(const xpuMxArrayTW &rhs)
+{
+  if (rhs.dt == xpuMxArrayTW::CPU)
+    return mxGetNumberOfElements(rhs.pa_cpu);
+
+#ifdef WITH_GPUARRAY
+  if (rhs.dt == xpuMxArrayTW::GPU)
+    return mxGPUGetNumberOfElements(rhs.pa_gpu);
+#endif // WITH_GPUARRAY
 }
 
 

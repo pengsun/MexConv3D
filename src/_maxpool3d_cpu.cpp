@@ -1,4 +1,4 @@
-#include "mex_shorthand2.h"
+#include "mxWrapper.h"
 #include "_maxpool3d_cpu.h"
 #include <omp.h>
 

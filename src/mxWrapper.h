@@ -51,20 +51,24 @@ struct xpuMxArrayTW {
 
   xpuMxArrayTW  ();
   ~xpuMxArrayTW ();
+  
+  xpuMxArrayTW            (const xpuMxArrayTW& rhs);
+  xpuMxArrayTW& operator= (const xpuMxArrayTW& rhs);
 
   void     setMxArray (mxArray *pa); // never owns the data
-  mxArray* getMxArray ();
+  mxArray* getMxArray () const;
 
-  mwSize    getNDims     ();
-  mwSize    getSizeAtDim (mwSize dim);
-  DEV_TYPE  getDevice    ();
-  mxClassID getElemType  ();
-  void*     getDataBeg   ();
+  mwSize    getNDims     () const;
+  mwSize    getSizeAtDim (mwSize dim) const;
+  DEV_TYPE  getDevice    () const;
+  mxClassID getElemType  () const;
+  void*     getDataBeg   () const;
 
 // private:
   mxArray*    pa_cpu;
   mxGPUArray* pa_gpu;
   DEV_TYPE    dt;
+
 };
 
 //// Shorthand for xpuMxArrayTW
@@ -76,21 +80,30 @@ mxArray* createVol5dLike (const xpuMxArrayTW &rhs, mxClassID tp = mxSINGLE_CLASS
 
 template<typename T> inline 
 T* getVolDataBeg(const xpuMxArrayTW &rhs, mwSize iVol = 0) {
-  return 0;
+  mwSize stride = rhs.getSizeAtDim(0) * rhs.getSizeAtDim(1) * rhs.getSizeAtDim(2);
+  T* pbeg = (T*)rhs.getDataBeg();
+  return (pbeg + iVol*stride);
 }
 
 template<typename T> inline 
 T* getVolInstDataBeg(const xpuMxArrayTW &rhs, mwSize iInst = 0) {
-  return 0;
+  mwSize stride = rhs.getSizeAtDim(0) * rhs.getSizeAtDim(1) * 
+                  rhs.getSizeAtDim(2) * rhs.getSizeAtDim(3);
+  T* pbeg = (T*)rhs.getDataBeg();
+  return (pbeg + iInst*stride);
 }
 
-inline mwSize numVol (const xpuMxArrayTW &rhs) {
-  return 0;
+inline 
+mwSize numVol (const xpuMxArrayTW &rhs) {
+  mwSize ndim = rhs.getNDims();
+  if (ndim <= 3 ) return 1;
+
+  mwSize n = 1;
+  for (mwSize i = 3; i < ndim; ++i) n *= rhs.getSizeAtDim(i);
+  return n;
 }
 
-inline mwSize numel (const xpuMxArrayTW &rhs) {
-  return 0;
-}
+mwSize numel (const xpuMxArrayTW &rhs);
 
 
 //// Miscellaneous
