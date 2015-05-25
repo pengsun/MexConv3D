@@ -14,8 +14,9 @@ root = fileparts(mfilename('fullpath')) ;
 %                                                        Parse options
 % --------------------------------------------------------------------
 
-opts.enableGpu        = false;
+opts.enableGpu        = true;
 opts.enableCudnn      = false;
+opts.enableOpenmp     = true;
 opts.verbose          = 1;
 opts.debug            = true;
 opts.cudaMethod       = 'nvcc' ;
@@ -30,7 +31,7 @@ opts.cudnnRoot        = 'local' ;
 %                                                     Files to compile
 % --------------------------------------------------------------------
 
-%%% mex gatway source
+%%% mex gateway source
 mex_src = {} ; 
 % mex_src{end+1} = fullfile('mex_conv3d.cpp');
 mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
@@ -43,7 +44,7 @@ if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
 end
 lib_src{end+1} = fullfile('mat_op.cpp') ;
-lib_src{end+1} = fullfile('mex_shorthand2.cpp') ;
+lib_src{end+1} = fullfile('mxWrapper.cpp') ;
 lib_src = cellfun( @(x) fullfile('src',x),...
   lib_src, 'UniformOutput',false);
 
@@ -88,7 +89,7 @@ dir_this = fileparts( mfilename('fullpath') );
 mex_dir = dir_this ;
 bld_dir = dir_this ;
 
-% Compiler flags
+% Common compiler flags: cc
 flags.cc = {} ;
 if opts.verbose > 1, flags.cc{end+1} = '-v' ; end
 if opts.debug
@@ -104,13 +105,14 @@ if opts.enableCudnn
   flags.cc{end+1} = ['-I' opts.cudnnRoot] ;
 end
 flags.cc{end+1} = '-I"./src"';
+
 % Linker flags
 flags.link = {} ;
+flags.link{end+1} = '-largeArrayDims';
 flags.link{end+1} = '-lmwblas' ;
 if opts.debug
   flags.link{end+1} = '-g';
 end
-
 if opts.enableGpu
   flags.link{end+1} = ['-L' opts.cudaLibDir] ;
   flags.link{end+1} = '-lcudart' ;
@@ -140,6 +142,7 @@ if opts.enableGpu
     fullfile(matlabroot, 'toolbox','distcomp','gpu','extern','include'),...
     '"'] ;
 end
+
 % For the MEX command: mexcu
 if opts.enableGpu 
   flags.mexcu = flags.cc ;
@@ -148,7 +151,7 @@ if opts.enableGpu
   flags.mexcu{end+1} = ['NVCCFLAGS=' opts.cudaArch '$NVCC_FLAGS'] ;
 end
 
-% For the cudaMethod='nvcc'
+% For the cudaMethod='nvcc': nvcc
 if opts.enableGpu && strcmp(opts.cudaMethod,'nvcc')
   flags.nvcc = flags.cc ;
   flags.nvcc{end+1} = ['-I"' fullfile(matlabroot, 'extern', 'include') '"'] ;
@@ -167,6 +170,23 @@ if opts.enableGpu && strcmp(opts.cudaMethod,'nvcc')
   end
 end
 
+% For -largeArrayDims
+flags.mexcc{end+1} = '-largeArrayDims';
+flags.mexcu{end+1} = '-largeArrayDims';
+
+% For openmp: mexcc
+if opts.enableOpenmp
+  if ( strcmp(arch(1:3), 'win') )
+    flags.mexcc{end+1} = 'COMPFLAGS=/openmp $COMPFLAGS';
+  else
+    flags.mexcc{end+1} = 'CXXFLAGS="\$CXXFLAGS -fopenmp"';
+  end
+end
+
+% For -largeArrayDims
+flags.mexcc{end+1} = '-largeArrayDims';
+
+% Verbose printing
 if opts.verbose
   fprintf('%s: intermediate build products directory: %s\n', mfilename, bld_dir) ;
   fprintf('%s: MEX files: %s/\n', mfilename, mex_dir) ;

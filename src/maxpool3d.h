@@ -27,6 +27,7 @@ struct maxpool3d {
   static const char * THE_CMD;
 
 protected:
+  void check_dY_ind   ();
   void check_pad_pool ();
   void create_Y   ();
   void create_ind ();

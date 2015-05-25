@@ -70,11 +70,11 @@ mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim) const
   if (dim >= ndim) return 1;
 
   if (dt == CPU)
-    return mxGetDimensions(pa_cpu)[dim];
+    return (mxGetDimensions(pa_cpu))[dim];
 
 #ifdef WITH_GPUARRAY
   if (dt == GPU)
-    return mxGPUGetDimensions(pa_gpu)[dim];
+    return (mxGPUGetDimensions(pa_gpu))[dim];
 #endif // WITH_GPUARRAY
 }
 

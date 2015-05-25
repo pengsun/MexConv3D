@@ -22,6 +22,12 @@ maxpool3d::maxpool3d()
   pad[0] = pad[1] = pad[2] = pad[3] = pad[4] = pad[5] = 0;
 }
 
+void maxpool3d::check_dY_ind()
+{
+  if (dY.getDevice() != ind.getDevice())
+    throw mp3d_ex("In bprop(): dY and ind must be both gpuArray or CPU mxArray.\n");
+}
+
 void maxpool3d::check_pad_pool()
 {
   if ( (pad[0]+pad[1]) >= pool[0] ||
@@ -80,6 +86,8 @@ void maxpool3d::create_dX()
   // create Y
   dX.setMxArray( createVol5dZeros(szdX, dY.dt) );
 }
+
+
 
 
 //// Impl of mp3d_ex

@@ -109,6 +109,7 @@ void maxpool3d_cpu::fprop()
 void maxpool3d_cpu::bprop()
 {
   // create dX at input port
+  check_dY_ind();
   create_dX();
 
   // dX at input port

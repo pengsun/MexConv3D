@@ -80,11 +80,10 @@ classdef unit
       % 
       fprintf('assert X(ind(:)) == Y\n');
       tmp = X(ind(:));
-      assert( all( tmp(:)==Y(:) ) );
+      assert(all( gather(tmp(:)) == gather(Y(:)) ));
       % 
       fprintf('bprop: generating all one dzdy, calculating dzdx...\n');
-      dzdy = ones(size(Y), 'single');
-      %dzdy = ones(size(Y),'like',Y);
+      dzdy = ones(size(Y),'like',Y);
       dzdx = mex_maxpool3d(dzdy,ind,...
         'pool',pool, 'stride',stride, 'pad',pad);
       %
@@ -94,7 +93,7 @@ classdef unit
         ix = ind(i);
         aa(ix) = aa(ix) + 1;
       end
-      assert( all( aa(:) == dzdx(:) ) );
+      assert(all( gather(aa(:)) == gather(dzdx(:)) ));
 
     end % test_ind
 
