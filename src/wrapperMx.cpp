@@ -1,4 +1,4 @@
-#include "mxWrapper.h"
+#include "wrapperMx.h"
 
 
 //// Impl of xpuMxArray

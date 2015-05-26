@@ -1,6 +1,6 @@
 #include "mex.h"
 #include "src/conv3d.h"
-#include "mex_shorthand.h"
+#include "src/wrapperMx.h"
 
 // "Y = MEX_CONV3D(X,F,B); forward pass"
 // "[dX,dF,dB] = MEX_CONV3D(X,F,B, dY); backward pass"
@@ -16,20 +16,19 @@ void mexFunction(int no, mxArray       *vo[],
 
   conv3d* h = 0; // TODO: consider unique_ptr?
   try {
-    h = factory.create(vi[0],vi[1],vi[2]); // always expect X, F, B 
-
-    conv3d::CALL_TYPE ct = h->parse_and_set(no,vo,ni,vi);
+    h = factory.parse_and_create(no,vo,ni,vi);
+    assert(h != 0);
 
     // do the job and set output
-    if (ct == conv3d::FPROP) {
+    if (h->ct == conv3d::FPROP) {
       h->fprop();
-      vo[0] = h->Y;
+      vo[0] = h->Y.getMxArray();
     }
-    if (ct == conv3d::BPROP) {
+    if (h->ct == conv3d::BPROP) {
       h->bprop();
-      vo[0] = h->dX;
-      vo[1] = h->dF;
-      vo[2] = h->dB;
+      vo[0] = h->dX.getMxArray();
+      vo[1] = h->dF.getMxArray();
+      vo[2] = h->dB.getMxArray();
     }
     // done: cleanup
     safe_delete(h);

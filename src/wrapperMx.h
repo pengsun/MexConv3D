@@ -71,7 +71,8 @@ struct xpuMxArrayTW {
 
 };
 
-//// Shorthand for xpuMxArrayTW
+
+//// Shorthand for xpuMxArrayTW (as Volume 3D + 2D)
 mxArray* createVol5d (mwSize sz[], xpuMxArrayTW::DEV_TYPE dt);
 
 mxArray* createVol5dZeros (mwSize sz[], xpuMxArrayTW::DEV_TYPE dt);
@@ -93,8 +94,7 @@ T* getVolInstDataBeg(const xpuMxArrayTW &rhs, mwSize iInst = 0) {
   return (pbeg + iInst*stride);
 }
 
-inline 
-mwSize numVol (const xpuMxArrayTW &rhs) {
+inline mwSize numVol (const xpuMxArrayTW &rhs) {
   mwSize ndim = rhs.getNDims();
   if (ndim <= 3 ) return 1;
 
@@ -102,7 +102,15 @@ mwSize numVol (const xpuMxArrayTW &rhs) {
   for (mwSize i = 3; i < ndim; ++i) n *= rhs.getSizeAtDim(i);
   return n;
 }
+ 
+inline mwSize numelVol (const xpuMxArrayTW &rhs) {
+  return rhs.getSizeAtDim(0) *
+         rhs.getSizeAtDim(1) *
+         rhs.getSizeAtDim(2);
+}
 
+
+//// Shorthand for xpuMxArrayTW
 mwSize numel (const xpuMxArrayTW &rhs);
 
 

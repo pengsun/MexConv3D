@@ -1,5 +1,5 @@
 #pragma once
-#include "mxWrapper.h"
+#include "wrapperMx.h"
 #include <exception>
 
 //// the transformer
@@ -23,7 +23,7 @@ struct maxpool3d {
   virtual void fprop () {};
   virtual void bprop () {};
 
-  // helper: command, parser
+  // helper: command
   static const char * THE_CMD;
 
 protected:
@@ -58,5 +58,5 @@ protected:
 
 struct factory_mp3d_withcudnn : public factory_mp3d { 
   // 3D data not implemented in cudnn yet...could be the case in the future?
-  virtual maxpool3d* create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
+  virtual maxpool3d* parse_and_create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
 };

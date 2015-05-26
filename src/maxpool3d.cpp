@@ -1,4 +1,4 @@
-#include "mxWrapper.h"
+#include "wrapperMx.h"
 #include "maxpool3d.h"
 #include "_maxpool3d_cpu.h"
 
@@ -86,8 +86,6 @@ void maxpool3d::create_dX()
   // create Y
   dX.setMxArray( createVol5dZeros(szdX, dY.dt) );
 }
-
-
 
 
 //// Impl of mp3d_ex

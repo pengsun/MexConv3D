@@ -36,7 +36,7 @@ classdef dg_cpu
         ob.pad = pad;
       end
       
-      ob.desc = ['cpu array ', desc];
+      ob.desc = ['mp3d, cpu array, ', desc];
     end % dg_cpu
     
   end % methods

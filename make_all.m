@@ -33,18 +33,26 @@ opts.cudnnRoot        = 'local' ;
 
 %%% mex gateway source
 mex_src = {} ; 
-% mex_src{end+1} = fullfile('mex_conv3d.cpp');
+mex_src{end+1} = fullfile('mex_conv3d.cpp');
 mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
 
-%%% others
+%%% lib source
 lib_src = {} ; 
+% max pool3d
 lib_src{end+1} = fullfile('maxpool3d.cpp') ;
 lib_src{end+1} = fullfile('_maxpool3d_cpu.cpp') ;
 if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
 end
-lib_src{end+1} = fullfile('mat_op.cpp') ;
-lib_src{end+1} = fullfile('mxWrapper.cpp') ;
+% conv3d
+lib_src{end+1} = fullfile('conv3d.cpp') ;
+lib_src{end+1} = fullfile('_conv3d_cpu.cpp') ;
+% if opts.enableGpu % GPU-specific files
+%   lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
+% end
+% common
+lib_src{end+1} = fullfile('wrapperBlas.cpp') ;
+lib_src{end+1} = fullfile('wrapperMx.cpp') ;
 lib_src = cellfun( @(x) fullfile('src',x),...
   lib_src, 'UniformOutput',false);
 
@@ -172,7 +180,9 @@ end
 
 % For -largeArrayDims
 flags.mexcc{end+1} = '-largeArrayDims';
-flags.mexcu{end+1} = '-largeArrayDims';
+if opts.enableGpu 
+  flags.mexcu{end+1} = '-largeArrayDims';
+end
 
 % For openmp: mexcc
 if opts.enableOpenmp

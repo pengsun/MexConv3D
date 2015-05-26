@@ -1,6 +1,6 @@
 #include "mex.h"
 #include "src/maxpool3d.h"
-#include "mxWrapper.h"
+#include "src/wrapperMx.h"
 
 // [Y,ind] = MEX_MAXPOOL3D(X); forward pass
 // dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass

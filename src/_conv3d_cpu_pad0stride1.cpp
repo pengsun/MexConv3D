@@ -9,11 +9,11 @@ struct subvol4D {
   mwSize size[4];
   mwSize stride[4];
 
-  void copy_to_matw_row           (matw& to,   mwSize row);
-  void copy_and_inc_from_matw_row (matw& from, mwSize row);
+  void copy_to_row           (matw& to,   mwSize row);
+  void copy_and_inc_from_row (matw& from, mwSize row);
 };
 
-void subvol4D::copy_to_matw_row (matw& the_mat, mwSize row)
+void subvol4D::copy_to_row (matw& the_mat, mwSize row)
 {
   float* pe_mat = the_mat.beg + row; // ptr element matrix
   
@@ -41,7 +41,7 @@ void subvol4D::copy_to_matw_row (matw& the_mat, mwSize row)
   
 }
 
-void subvol4D::copy_and_inc_from_matw_row (matw& the_mat, mwSize row)
+void subvol4D::copy_and_inc_from_row (matw& the_mat, mwSize row)
 {
   float* pe_mat = the_mat.beg + row; // ptr element matrix
 
@@ -131,7 +131,7 @@ void conv3d_cpu::bprop()
     // safe to reuse convmat memory, remember to overwrite it!
     AxBTtoC(dY_, F_, convmat, true);
     // dX(:,:,:,:,i) <-- dphiX
-    convmat_to_vol(dX, i);
+    vol_from_convmat(dX, i);
   }
 
   free_u();
@@ -366,7 +366,7 @@ void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
         sv.offset[0] = i;
 
         // copy to convmat(row, :)
-        sv.copy_to_matw_row(convmat, row);
+        sv.copy_to_row(convmat, row);
 
         // step to next row, should be consistent with i,j,k,p
         ++row;
@@ -376,7 +376,7 @@ void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 
 }
 
-void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
+void conv3d_cpu::vol_from_convmat(mxArray *pvol, mwSize iInst)
 {
   // TODO: code refactoring. almost the same with vol_to_convmat
 
@@ -409,7 +409,7 @@ void conv3d_cpu::convmat_to_vol(mxArray *pvol, mwSize iInst)
         sv.offset[0] = i;
 
         // copy to convmat(row, :)
-        sv.copy_and_inc_from_matw_row(convmat, row);
+        sv.copy_and_inc_from_row(convmat, row);
 
         // step to next row, should be consistent with i,j,k,p
         ++row;

@@ -1,4 +1,5 @@
-#include "mxWrapper.h"
+#include "mex.h"
+#include "wrapperMx.h"
 #include "_maxpool3d_gpu.h"
 
 
