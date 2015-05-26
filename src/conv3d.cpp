@@ -137,7 +137,13 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
   set_options(holder, n_opt, ni, vi);
 
   // TODO: gpu version here
-  return new conv3d_blas_cpu(holder);
+  xpuMxArrayTW::DEV_TYPE dt;
+  if (dt == xpuMxArrayTW::CPU)
+    return new conv3d_blas_cpu(holder);
+  else if (dt == xpuMxArrayTW::GPU)
+    return new conv3d_blas_gpu(holder);
+  else
+    assert(false, "what the???");
 }
 
 void factory_c3d_homebrew::set_options(conv3d &holder, int opt_beg, int ni, mxArray const *vi[])

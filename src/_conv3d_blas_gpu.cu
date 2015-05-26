@@ -1,3 +1,4 @@
+#include "cuda_runtime.h"
 #include "_conv3d_blas_gpu.h"
 
 namespace {
@@ -252,6 +253,7 @@ matw conv3d_blas_gpu::make_dB_()
 //// Impl of helper: the stacked matrix storing phiX or dphiX
 void conv3d_blas_gpu::init_convmat()
 {
+  // set the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0) // in FPROP, Y has been set
     convmat.H = numelVol(Y);
@@ -260,13 +262,20 @@ void conv3d_blas_gpu::init_convmat()
 
   convmat.W = numelVol(F) * F.getSizeAtDim(3);
   mwSize nelem = convmat.H * convmat.W;
-  convmat.beg = (float*)mxCalloc( nelem, sizeof(float) );
-  // mxCalloc assures the initialization with all 0s ! 
+
+  // allocate the memory
+  void* tmp;
+  cudaError_t flag = cudaMalloc(&tmp,  nelem*sizeof(float) ) ;
+  if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
+  convmat.beg = (float*)tmp;
+
+  // TODO: assures all zeros
+  
 }
 
 void conv3d_blas_gpu::free_convmat()
 {
-  mxFree( (void*)convmat.beg );
+  cudaFree( (void*)convmat.beg );
 }
 
 void conv3d_blas_gpu::vol_to_convmat(xpuMxArrayTW &pvol, mwSize iInst)
@@ -281,6 +290,7 @@ void conv3d_blas_gpu::vol_from_convmat(xpuMxArrayTW &pvol, mwSize iInst)
 
 void conv3d_blas_gpu::init_u()
 {
+  // decide the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0)
     u.H = numelVol(Y);
@@ -289,16 +299,20 @@ void conv3d_blas_gpu::init_u()
 
   u.W = 1;
   mwSize nelem = u.H * u.W ;
-  u.beg = (float*)mxMalloc( nelem * sizeof(float) );
 
-  // make sure all one
-  for (int i = 0; i < nelem; i++)
-    u.beg[i] = 1.0;
+  // allocate the memory
+  void* tmp;
+  cudaError_t flag = cudaMalloc(&tmp, nelem * sizeof(float));
+  if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
+  u.beg = (float*) tmp;
+
+  // TODO: make sure all one
+
 }
 
 void conv3d_blas_gpu::free_u()
 {
-  mxFree( (void*)u.beg );
+  cudaFree( (void*)u.beg );
 }
 
 ////

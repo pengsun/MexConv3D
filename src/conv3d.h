@@ -35,7 +35,6 @@ protected:
   void create_dX ();
   void create_dF ();
   void create_dB ();
-
 };
 
 
