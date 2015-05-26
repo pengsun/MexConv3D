@@ -3,26 +3,20 @@
 #include "wrapperBlas.h"
 
 //// conv3d: cpu version
-struct conv3d_cpu : public conv3d {
-  conv3d_cpu ();
-  conv3d_cpu (const conv3d& rhs);
+struct conv3d_blas_cpu : public conv3d {
+  conv3d_blas_cpu ();
+  conv3d_blas_cpu (const conv3d& rhs);
 
   void fprop ();
   void bprop ();
 
 private:
   // helper: fprop
-  void create_Y ();
   matw make_F_ ();
   matw make_Y_ (mwSize i);
   matw make_B_ ();
 
   // helper: bprop
-  void check_X_size ();
-  void create_dX ();
-  void create_dF ();
-  void create_dB ();
-  //matw make_dX_ (mwSize i);
   matw make_dY_ (mwSize i);
   matw make_dF_ ();
   matw make_dB_ ();

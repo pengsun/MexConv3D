@@ -1,4 +1,4 @@
-#include "_conv3d_cpu.h"
+#include "_conv3d_blas_cpu.h"
 
 namespace {
 
@@ -104,12 +104,12 @@ void subvol4D::copy_and_inc_from_row (matw& the_mat, mwSize row)
 
 
 //// impl of public methods
-conv3d_cpu::conv3d_cpu()
+conv3d_blas_cpu::conv3d_blas_cpu()
 {
 
 }
 
-conv3d_cpu::conv3d_cpu(const conv3d& obj)
+conv3d_blas_cpu::conv3d_blas_cpu(const conv3d& obj)
 {
   for (int i = 0; i < 6; ++i) pad[i]  = obj.pad[i];
   for (int i = 0; i < 3; ++i) stride[i] = obj.stride[i];
@@ -126,7 +126,7 @@ conv3d_cpu::conv3d_cpu(const conv3d& obj)
   ct = obj.ct;
 }
 
-void conv3d_cpu::fprop()
+void conv3d_blas_cpu::fprop()
 {
   create_Y();
   init_convmat();
@@ -152,7 +152,7 @@ void conv3d_cpu::fprop()
   free_convmat();
 }
 
-void conv3d_cpu::bprop()
+void conv3d_blas_cpu::bprop()
 {
   check_X_size();
   create_dX();
@@ -188,35 +188,7 @@ void conv3d_cpu::bprop()
 }
 
 //// Impl of helper: fprop
-void conv3d_cpu::create_Y()
-{
-  // check input X and filter F, B
-  if ( F.getSizeAtDim(3) != X.getSizeAtDim(3) )  // 
-    throw conv3d_ex("#feature maps of F and X should match: size(F,4)==size(X,4).");
-
-  if (F.getSizeAtDim(4) != B.getSizeAtDim(1)) 
-    throw conv3d_ex("#Bias should match the output feature map: size(F,5)==size(B,2).");
-
-  // TODO: check the device type
-
-  // size Y: the right size taking pad and stride into account
-  if (pad[0]+pad[1]+X.getSizeAtDim(0) < F.getSizeAtDim(0) || 
-      pad[2]+pad[3]+X.getSizeAtDim(1) < F.getSizeAtDim(1) ||
-      pad[4]+pad[5]+X.getSizeAtDim(2) < F.getSizeAtDim(2) )
-    throw conv3d_ex("Filter size should not be greater than feature map size.");
-  
-  mwSize szY[5];
-  szY[0] = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
-  szY[1] = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
-  szY[2] = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
-  szY[3] = F.getSizeAtDim(4);
-  szY[4] = X.getSizeAtDim(4);
-
-  // create Y
-  Y.setMxArray( createVol5d(szY, X.getDevice()) );
-}
-
-matw conv3d_cpu::make_F_()
+matw conv3d_blas_cpu::make_F_()
 {
   matw F_;
   F_.beg = (float*)F.getDataBeg();
@@ -226,7 +198,7 @@ matw conv3d_cpu::make_F_()
   return F_;
 }
 
-matw conv3d_cpu::make_Y_(mwSize i)
+matw conv3d_blas_cpu::make_Y_(mwSize i)
 {
   matw Y_;
   Y_.beg = getVolInstDataBeg<float>(Y, i);
@@ -236,7 +208,7 @@ matw conv3d_cpu::make_Y_(mwSize i)
   return Y_;
 }
 
-matw conv3d_cpu::make_B_()
+matw conv3d_blas_cpu::make_B_()
 {
   matw B_;
   B_.beg = (float*)B.getDataBeg();
@@ -247,51 +219,7 @@ matw conv3d_cpu::make_B_()
 }
 
 //// Impl of helper: bprop
-void conv3d_cpu::check_X_size()
-{
-  // TODO: code refactoring. duplicate code with create_Y()
-
-  // size Y: the right size taking pad and stride into account
-  mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
-  mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
-  mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
-  mwSize MY = F.getSizeAtDim(4);
-  mwSize NY = X.getSizeAtDim(4);
-
-  if (HY != dY.getSizeAtDim(0) ||
-      WY != dY.getSizeAtDim(1) || 
-      DY != dY.getSizeAtDim(2) ||
-      MY != dY.getSizeAtDim(3) ||
-      NY != dY.getSizeAtDim(4) )
-    throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
-}
-
-void conv3d_cpu::create_dX()
-{
-  dX.setMxArray( createVol5dLike(X) );
-}
-
-void conv3d_cpu::create_dF()
-{
-  dF.setMxArray( createVol5dLike(F) );
-}
-
-void conv3d_cpu::create_dB()
-{
-  dB.setMxArray( createVol5dLike(B) );
-}
-
-//matw conv3d_cpu::make_dX_(mwSize i)
-//{
-//  matw dX_;
-//  dX_.beg = getVolInstDataBeg<float>(dX, i);
-//  dX_.H   = numelVol(dX);
-//  dX_.W   = getSzAtDim<4>(dX);
-//
-//  return dX_;
-//}
-
-matw conv3d_cpu::make_dY_(mwSize i)
+matw conv3d_blas_cpu::make_dY_(mwSize i)
 {
   matw dY_;
   dY_.beg = getVolInstDataBeg<float>(dY, i);
@@ -301,7 +229,7 @@ matw conv3d_cpu::make_dY_(mwSize i)
   return dY_;
 }
 
-matw conv3d_cpu::make_dF_()
+matw conv3d_blas_cpu::make_dF_()
 {
   matw dF_;
   dF_.beg = (float*)dF.getDataBeg();
@@ -311,7 +239,7 @@ matw conv3d_cpu::make_dF_()
   return dF_;
 }
 
-matw conv3d_cpu::make_dB_()
+matw conv3d_blas_cpu::make_dB_()
 {
   matw dB_;
   dB_.beg = (float*)dB.getDataBeg();
@@ -322,7 +250,7 @@ matw conv3d_cpu::make_dB_()
 }
 
 //// Impl of helper: the stacked matrix storing phiX or dphiX
-void conv3d_cpu::init_convmat()
+void conv3d_blas_cpu::init_convmat()
 {
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0) // in FPROP, Y has been set
@@ -336,22 +264,22 @@ void conv3d_cpu::init_convmat()
   // mxCalloc assures the initialization with all 0s ! 
 }
 
-void conv3d_cpu::free_convmat()
+void conv3d_blas_cpu::free_convmat()
 {
   mxFree( (void*)convmat.beg );
 }
 
-void conv3d_cpu::vol_to_convmat(xpuMxArrayTW &pvol, mwSize iInst)
+void conv3d_blas_cpu::vol_to_convmat(xpuMxArrayTW &pvol, mwSize iInst)
 {
   cpy_convmat_vol<VOL_TO_CONVMAT>(pvol, iInst);
 }
 
-void conv3d_cpu::vol_from_convmat(xpuMxArrayTW &pvol, mwSize iInst)
+void conv3d_blas_cpu::vol_from_convmat(xpuMxArrayTW &pvol, mwSize iInst)
 {
   cpy_convmat_vol<VOL_FROM_CONVMAT>(pvol, iInst);
 }
 
-void conv3d_cpu::init_u()
+void conv3d_blas_cpu::init_u()
 {
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0)
@@ -368,7 +296,7 @@ void conv3d_cpu::init_u()
     u.beg[i] = 1.0;
 }
 
-void conv3d_cpu::free_u()
+void conv3d_blas_cpu::free_u()
 {
   mxFree( (void*)u.beg );
 }

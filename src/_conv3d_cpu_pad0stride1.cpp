@@ -73,12 +73,12 @@ void subvol4D::copy_and_inc_from_row (matw& the_mat, mwSize row)
 
 
 //// impl of public methods
-conv3d_cpu::conv3d_cpu()
+conv3d_blas_cpu::conv3d_blas_cpu()
 {
 
 }
 
-void conv3d_cpu::fprop()
+void conv3d_blas_cpu::fprop()
 {
   create_Y();
   init_convmat();
@@ -104,7 +104,7 @@ void conv3d_cpu::fprop()
   free_convmat();
 }
 
-void conv3d_cpu::bprop()
+void conv3d_blas_cpu::bprop()
 {
   create_dX();
   create_dF();
@@ -138,9 +138,9 @@ void conv3d_cpu::bprop()
   free_convmat();
 }
 
-conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxArray const *vi[] )
+conv3d::CALL_TYPE conv3d_blas_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxArray const *vi[] )
 {
-  conv3d_cpu::CALL_TYPE ct;
+  conv3d_blas_cpu::CALL_TYPE ct;
   int n_opt = -1;
 
   // fprop or bprop?
@@ -185,7 +185,7 @@ conv3d::CALL_TYPE conv3d_cpu::parse_and_set( int no, mxArray *vo[], int ni, mxAr
 }
 
 //// impl of helpers
-void conv3d_cpu::set_stride( mxArray const *pa )
+void conv3d_blas_cpu::set_stride( mxArray const *pa )
 {
   mexErrMsgTxt("Option stride not implemented yet. Sorry..."
     "Currently the stride is always 1.\n");
@@ -193,7 +193,7 @@ void conv3d_cpu::set_stride( mxArray const *pa )
   //  mexErrMsgTxt(THE_CMD);
 }
 
-void conv3d_cpu::set_pad( mxArray const *pa )
+void conv3d_blas_cpu::set_pad( mxArray const *pa )
 {
   mexErrMsgTxt("Option pad not implemented yet. Sorry..."
     "Currently the pad is always 0.\n");
@@ -201,7 +201,7 @@ void conv3d_cpu::set_pad( mxArray const *pa )
   //  mexErrMsgTxt(THE_CMD);
 }
 
-void conv3d_cpu::create_Y()
+void conv3d_blas_cpu::create_Y()
 {
   // check input X and filter F, B
   if (getVolP(F) != getVolM(X))  // #feature maps should match
@@ -226,7 +226,7 @@ void conv3d_cpu::create_Y()
   Y = createVol5d(HY, WY, DY, MY, NY);
 }
 
-matw conv3d_cpu::make_F_()
+matw conv3d_blas_cpu::make_F_()
 {
   matw F_;
   F_.beg = getDataBeg<float>(F);
@@ -236,7 +236,7 @@ matw conv3d_cpu::make_F_()
   return F_;
 }
 
-matw conv3d_cpu::make_Y_(mwSize i)
+matw conv3d_blas_cpu::make_Y_(mwSize i)
 {
   matw Y_;
   Y_.beg = getVolInstDataBeg<float>(Y, i);
@@ -246,7 +246,7 @@ matw conv3d_cpu::make_Y_(mwSize i)
   return Y_;
 }
 
-matw conv3d_cpu::make_B_()
+matw conv3d_blas_cpu::make_B_()
 {
   matw B_;
   B_.beg = getDataBeg<float>(B);
@@ -256,22 +256,22 @@ matw conv3d_cpu::make_B_()
   return B_;
 }
 
-void conv3d_cpu::create_dX()
+void conv3d_blas_cpu::create_dX()
 {
   dX = createVol5dLike(X);
 }
 
-void conv3d_cpu::create_dF()
+void conv3d_blas_cpu::create_dF()
 {
   dF = createVol5dLike(F);
 }
 
-void conv3d_cpu::create_dB()
+void conv3d_blas_cpu::create_dB()
 {
   dB = createVol5dLike(B);
 }
 
-matw conv3d_cpu::make_dX_(mwSize i)
+matw conv3d_blas_cpu::make_dX_(mwSize i)
 {
   matw dX_;
   dX_.beg = getVolInstDataBeg<float>(dX, i);
@@ -281,7 +281,7 @@ matw conv3d_cpu::make_dX_(mwSize i)
   return dX_;
 }
 
-matw conv3d_cpu::make_dY_(mwSize i)
+matw conv3d_blas_cpu::make_dY_(mwSize i)
 {
   matw dY_;
   dY_.beg = getVolInstDataBeg<float>(dY, i);
@@ -291,7 +291,7 @@ matw conv3d_cpu::make_dY_(mwSize i)
   return dY_;
 }
 
-matw conv3d_cpu::make_dF_()
+matw conv3d_blas_cpu::make_dF_()
 {
   matw dF_;
   dF_.beg = getVolDataBeg<float>(dF);
@@ -301,7 +301,7 @@ matw conv3d_cpu::make_dF_()
   return dF_;
 }
 
-matw conv3d_cpu::make_dB_()
+matw conv3d_blas_cpu::make_dB_()
 {
   matw dB_;
   dB_.beg = getVolDataBeg<float>(dB);
@@ -311,7 +311,7 @@ matw conv3d_cpu::make_dB_()
   return dB_;
 }
 
-void conv3d_cpu::init_convmat()
+void conv3d_blas_cpu::init_convmat()
 {
   if (Y != 0) // in FPROP, Y has been set
     convmat.H = numelVol(Y);
@@ -326,12 +326,12 @@ void conv3d_cpu::init_convmat()
   // mxCalloc assures the initialization with all 0s ! 
 }
 
-void conv3d_cpu::free_convmat()
+void conv3d_blas_cpu::free_convmat()
 {
   mxFree( (void*)convmat.beg );
 }
 
-void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
+void conv3d_blas_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 {
   // TODO: code refactoring. almost the same with vol_to_convmat
 
@@ -376,7 +376,7 @@ void conv3d_cpu::vol_to_convmat(const mxArray *pvol, mwSize iInst)
 
 }
 
-void conv3d_cpu::vol_from_convmat(mxArray *pvol, mwSize iInst)
+void conv3d_blas_cpu::vol_from_convmat(mxArray *pvol, mwSize iInst)
 {
   // TODO: code refactoring. almost the same with vol_to_convmat
 
@@ -419,7 +419,7 @@ void conv3d_cpu::vol_from_convmat(mxArray *pvol, mwSize iInst)
 
 }
 
-void conv3d_cpu::init_u()
+void conv3d_blas_cpu::init_u()
 {
   if (Y != 0)
     u.H = numelVol(Y);
@@ -437,7 +437,7 @@ void conv3d_cpu::init_u()
     u.beg[i] = 1.0;
 }
 
-void conv3d_cpu::free_u()
+void conv3d_blas_cpu::free_u()
 {
   mxFree( (void*)u.beg );
 }

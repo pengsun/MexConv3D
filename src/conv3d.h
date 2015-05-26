@@ -26,6 +26,15 @@ struct conv3d {
 
   // helper: command
   static const char * THE_CMD;
+
+protected:
+  // helper for fprop
+  void create_Y ();
+  // helper for bprop
+  void check_X_size ();
+  void create_dX ();
+  void create_dF ();
+  void create_dB ();
 };
 
 

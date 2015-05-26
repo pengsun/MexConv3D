@@ -1,5 +1,5 @@
 #include "conv3d.h"
-#include "_conv3d_cpu.h"
+#include "_conv3d_blas_cpu.h"
 
 //// Impl of conv3d
 const char* conv3d::THE_CMD = 
@@ -16,6 +16,68 @@ conv3d::conv3d()
 
 }
 
+//// Impl of helpers
+void conv3d::create_Y()
+{
+  // check input X and filter F, B
+  if ( F.getSizeAtDim(3) != X.getSizeAtDim(3) )  // 
+    throw conv3d_ex("#feature maps of F and X should match: size(F,4)==size(X,4).");
+
+  if (F.getSizeAtDim(4) != B.getSizeAtDim(1)) 
+    throw conv3d_ex("#Bias should match the output feature map: size(F,5)==size(B,2).");
+
+  // TODO: check the device type
+
+  // size Y: the right size taking pad and stride into account
+  if (pad[0]+pad[1]+X.getSizeAtDim(0) < F.getSizeAtDim(0) || 
+    pad[2]+pad[3]+X.getSizeAtDim(1) < F.getSizeAtDim(1) ||
+    pad[4]+pad[5]+X.getSizeAtDim(2) < F.getSizeAtDim(2) )
+    throw conv3d_ex("Filter size should not be greater than feature map size.");
+
+  mwSize szY[5];
+  szY[0] = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
+  szY[1] = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
+  szY[2] = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
+  szY[3] = F.getSizeAtDim(4);
+  szY[4] = X.getSizeAtDim(4);
+
+  // create Y
+  Y.setMxArray( createVol5d(szY, X.getDevice()) );
+}
+
+void conv3d::check_X_size()
+{
+  // TODO: code refactoring. duplicate code with create_Y()
+
+  // size Y: the right size taking pad and stride into account
+  mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
+  mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
+  mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
+  mwSize MY = F.getSizeAtDim(4);
+  mwSize NY = X.getSizeAtDim(4);
+
+  if (HY != dY.getSizeAtDim(0) ||
+    WY != dY.getSizeAtDim(1) || 
+    DY != dY.getSizeAtDim(2) ||
+    MY != dY.getSizeAtDim(3) ||
+    NY != dY.getSizeAtDim(4) )
+    throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
+}
+
+void conv3d::create_dX()
+{
+  dX.setMxArray( createVol5dLike(X) );
+}
+
+void conv3d::create_dF()
+{
+  dF.setMxArray( createVol5dLike(F) );
+}
+
+void conv3d::create_dB()
+{
+  dB.setMxArray( createVol5dLike(B) );
+}
 
 //// impl of conv3d_ex
 conv3d_ex::conv3d_ex(const char* msg)
@@ -72,7 +134,7 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
   set_options(holder, n_opt, ni, vi);
 
   // TODO: gpu version here
-  return new conv3d_cpu(holder);
+  return new conv3d_blas_cpu(holder);
 }
 
 void factory_c3d_homebrew::set_options(conv3d &holder, int opt_beg, int ni, mxArray const *vi[])
