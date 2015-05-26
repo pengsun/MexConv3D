@@ -35,6 +35,7 @@ protected:
   void create_dX ();
   void create_dF ();
   void create_dB ();
+
 };
 
 
@@ -53,9 +54,12 @@ struct factory_c3d_homebrew : public factory_c3d {
   virtual conv3d* parse_and_create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
 
 protected:
+  void check_type (const conv3d &holder);
+
   void set_options (conv3d &holder, int n_opt, int ni, mxArray const *vi[]);
   void set_stride  (conv3d &holder, mxArray const *pa);
   void set_pad     (conv3d &holder, mxArray const *pa);
+  
 };
 
 struct factory_c3d_withcudnn : public factory_c3d { 

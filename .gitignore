@@ -4,3 +4,8 @@
 *.obj
 /temp/*.mexw64
 /*.mexw64
+*.filters
+*.vcxproj
+*.sdf
+*.sln
+*.suo

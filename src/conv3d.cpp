@@ -1,5 +1,6 @@
 #include "conv3d.h"
 #include "_conv3d_blas_cpu.h"
+#include "_conv3d_blas_gpu.h"
 
 //// Impl of conv3d
 const char* conv3d::THE_CMD = 
@@ -79,6 +80,7 @@ void conv3d::create_dB()
   dB.setMxArray( createVol5dLike(B) );
 }
 
+
 //// impl of conv3d_ex
 conv3d_ex::conv3d_ex(const char* msg)
   : exception(msg)
@@ -90,7 +92,6 @@ conv3d_ex::conv3d_ex(const char* msg)
 //// Impl of factory_c3d_homebrew
 conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mxArray const *vi[])
 {
-
   // fprop or bprop?
   conv3d holder;
   int n_opt = -1;
@@ -131,6 +132,8 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
       "The output should be either Y (fprop) or [dX,dF,dB] (bprop). \n");
   }
 
+  check_type(holder);
+
   set_options(holder, n_opt, ni, vi);
 
   // TODO: gpu version here
@@ -159,5 +162,24 @@ void factory_c3d_homebrew::set_pad(conv3d &holder, mxArray const *pa )
 {
   if ( !setCArray<mwSize, 6>(pa, holder.pad) )
     throw conv3d_ex("The length of option pad should be either 1 or 6.");
+}
+
+void factory_c3d_homebrew::check_type(const conv3d &holder)
+{
+  // X, F, B have been set
+  xpuMxArrayTW::DEV_TYPE dt = holder.X.getDevice();
+  bool flag = true;
+  flag &= (dt == holder.F.getDevice());
+  flag &= (dt == holder.B.getDevice());
+
+  if (!flag) 
+    throw conv3d_ex("In fprop(), X, F, B must be all gpuArray or mxArray.\n");
+
+  // dY has been set?
+  if ( holder.dY.pa_cpu != 0 ) 
+    flag &= (dt == holder.dY.getDevice());
+
+  if (!flag) 
+    throw conv3d_ex("In bprop(), X, F, B, dZdY must be all gpuArray or mxArray.\n");
 }
 

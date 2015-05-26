@@ -1,7 +1,7 @@
 #pragma once
 #include "mex.h"
 
-// 2D matrix thin wrapper over raw data pointer
+// 2D matrix thin wrapper over raw data pointer (host or device)
 // presume continuous memory
 // caller owns data and assures assignment 
 struct matw {

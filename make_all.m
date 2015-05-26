@@ -46,10 +46,10 @@ if opts.enableGpu % GPU-specific files
 end
 % conv3d
 lib_src{end+1} = fullfile('conv3d.cpp') ;
-lib_src{end+1} = fullfile('_conv3d_cpu.cpp') ;
-% if opts.enableGpu % GPU-specific files
-%   lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
-% end
+lib_src{end+1} = fullfile('_conv3d_blas_cpu.cpp') ;
+if opts.enableGpu % GPU-specific files
+  lib_src{end+1} = fullfile('_conv3d_blas_gpu.cu') ;
+end
 % common
 lib_src{end+1} = fullfile('wrapperBlas.cpp') ;
 lib_src{end+1} = fullfile('wrapperMx.cpp') ;
