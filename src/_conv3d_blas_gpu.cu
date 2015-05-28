@@ -2,104 +2,132 @@
 #include "_conv3d_blas_gpu.h"
 
 namespace {
-
-// helper: sub volume attaching to big volume
-struct subvol4D {
-  float* beg;
-  int64_T offset[4];
-  mwSize  sizeBigVol[4];
-
-  mwSize size[4];
-  mwSize stride[4];
-
-  void copy_to_row           (matw& to,   mwSize row);
-  void copy_and_inc_from_row (matw& from, mwSize row);
-};
-
-void subvol4D::copy_to_row (matw& the_mat, mwSize row)
-{
-  // init output: ptr element matrix
-  float* pe_mat = the_mat.beg + row; 
-  
-  // For the sub volume, scan dim3,...,dim0. At each dim,
-  // consider three cases: underflow, regular walking and overflow
-  for (mwSize d3 = 0; d3 < size[3]; ++d3) {
-    int64_T d3BigVol = (offset[3] + d3);
-    float* ptr_d3    = d3BigVol*stride[3] + this->beg;
-    bool   d3InRange = (d3BigVol >= 0) && (d3BigVol < sizeBigVol[3]);
-
-    for (mwSize d2 = 0; d2 < size[2]; ++d2) {
-      int64_T d2BigVol = (offset[2] + d2);
-      float* ptr_d2    = d2BigVol*stride[2] + ptr_d3;
-      bool   d2InRange = (d2BigVol >= 0) && (d2BigVol < sizeBigVol[2]); 
-
-      for (mwSize d1 = 0; d1 < size[1]; ++d1) {
-        int64_T d1BigVol = (offset[1] + d1);
-        float* ptr_d1    = d1BigVol*stride[1] + ptr_d2;
-        bool   d1InRange = (d1BigVol >= 0) && (d1BigVol < sizeBigVol[1]);
-
-        for (mwSize d0 = 0; d0 < size[0]; ++d0) {
-          int64_T d0BigVol = (offset[0] + d0);
-          float* ptr_d0    = d0BigVol*stride[0] + ptr_d1; // ptr element volume
-          bool   d0InRange = (d0BigVol >= 0) && (d0BigVol < sizeBigVol[0]);
-
-          if (d3InRange && d2InRange && d1InRange && d0InRange)
-            *pe_mat = *ptr_d0; // copy the single element if in range
-          else
-            *pe_mat = 0.0; // set to zero if out of range
-          
-          // advance to next matrix element
-          pe_mat += the_mat.H;
-        } // d0
-      } // d1
-    } // d2
-  } // d3
-  
+//// helpers for threads
+mwSize ceil_divide (mwSize a, mwSize b) {
+  return (a + b - 1)/b;
 }
 
-void subvol4D::copy_and_inc_from_row (matw& the_mat, mwSize row)
-{
-  // TODO: code refactoring. almost the same code with copy_to_matw_row
+const int NUM_THD_DIM = 512; 
 
-  // init output: ptr element matrix
-  float* pe_mat = the_mat.beg + row; 
-
-  // For the sub volume, scan dim3,...,dim0. At each dim,
-  // consider three cases: underflow, regular walking and overflow
-  for (mwSize d3 = 0; d3 < size[3]; ++d3) {
-    int64_T d3BigVol = (offset[3] + d3);
-    float* ptr_d3    = d3BigVol*stride[3] + this->beg;
-    bool   d3InRange = (d3BigVol >= 0) && (d3BigVol < sizeBigVol[3]);
-
-    for (mwSize d2 = 0; d2 < size[2]; ++d2) {
-      int64_T d2BigVol = (offset[2] + d2);
-      float* ptr_d2    = d2BigVol*stride[2] + ptr_d3;
-      bool   d2InRange = (d2BigVol >= 0) && (d2BigVol < sizeBigVol[2]); 
-
-      for (mwSize d1 = 0; d1 < size[1]; ++d1) {
-        int64_T d1BigVol = (offset[1] + d1);
-        float* ptr_d1    = d1BigVol*stride[1] + ptr_d2;
-        bool   d1InRange = (d1BigVol >= 0) && (d1BigVol < sizeBigVol[1]);
-
-        for (mwSize d0 = 0; d0 < size[0]; ++d0) {
-          int64_T d0BigVol = (offset[0] + d0);
-          float* ptr_d0    = d0BigVol*stride[0] + ptr_d1; // ptr element volume
-          bool   d0InRange = (d0BigVol >= 0) && (d0BigVol < sizeBigVol[0]);
-
-          if (d3InRange && d2InRange && d1InRange && d0InRange)
-            *ptr_d0 += *pe_mat; // copy and increment the single element if in range
-          //else
-          //  do nothing if out of range
-
-          // advance to next matrix element
-          pe_mat += the_mat.H;
-        } // d0
-      } // d1
-    } // d2
-  } // d3
-
+//// kernel helper: setting initial value
+template<typename T>
+__global__ void kernelSetZero (T* beg, mwSize len) {
+  mwSize ind = blockIdx.x * blockDim.x + threadIdx.x;
+  if (ind < len) beg[ind] = static_cast<T>(0);
 }
 
+template<typename T>
+__global__ void kernelSetOne (T* beg, mwSize len) {
+  mwSize ind = blockIdx.x * blockDim.x + threadIdx.x;
+  if (ind < len) beg[ind] = static_cast<T>(1);
+}
+
+//// kernel impl: kernelCpyVolConvmat and its helpers
+typedef conv3d_blas_gpu::CpyVolConvmatImpl CpyImpl;
+
+__device__ mwSize get_convmat_h (CpyImpl &ip, mwSize indCM) {
+  return (indCM % ip.convmat.H);
+}
+
+__device__ mwSize get_convmat_w (CpyImpl &ip, mwSize indCM) {
+  return (indCM / ip.convmat.H);
+}
+
+__device__ void get_subY (CpyImpl &ip, mwSize ind,  mwSize subY[3]) {
+  mwSize HW = ip.szY[0] * ip.szY[1];
+  mwSize H  = ip.szY[0];
+
+  subY[2] = ind / HW;
+  ind %= HW;
+
+  subY[1] = ind / H;
+  ind %= H;
+
+  subY[0] = ind;
+}
+
+__device__ void get_win_offset4 (CpyImpl &ip, mwSize h_covnmat,  int64_T win_offset[3]) {
+  mwSize subY[3];
+  get_subY(ip, h_covnmat, subY);
+
+  for (int i = 0; i < 3; ++i) 
+    win_offset[i] = -static_cast<int64_T>(ip.pad[2*i]) + static_cast<int64_T>(subY[i] * ip.stride[i]);
+  win_offset[3] = 0;
+}
+
+__device__ void get_win_sub4 (CpyImpl &ip, mwSize w_convmat,  mwSize win_sub[4]) {
+  mwSize H   = ip.szF[0]; 
+  mwSize HW  = H * ip.szF[1];
+  mwSize HWD = HW * ip.szF[2];
+
+  win_sub[3] = w_convmat / HWD;
+  w_convmat %= HWD;
+
+  win_sub[2] = w_convmat / HW;
+  w_convmat %= HW;
+
+  win_sub[1] = w_convmat / H;
+  w_convmat %= H;
+
+  win_sub[0] = w_convmat;
+}
+
+// return -1 if out of range (either underflow or overflow)
+__device__ int64_T get_indVol (CpyImpl &ip, int64_T win_offset[4], mwSize win_sub[4]) {
+
+  // the global subscript and guaranteed valid range
+  mwSize vol_sub[4];
+  for (int i = 0; i < 4; ++i) {
+    if ( win_offset[i] < 0 ) return -1; // underflow
+    vol_sub[i] = win_offset[i] + win_sub[i];
+    if ( vol_sub[i] >= ip.vol_i.sz[i] ) return -1; // overflow
+  }
+
+  mwSize H   = ip.vol_i.sz[0];
+  mwSize HW  = H * ip.vol_i.sz[1];
+  mwSize HWD = HW * ip.vol_i.sz[2];
+
+  return static_cast<int64_T>(HWD*vol_sub[3] + HW*vol_sub[2] + H*vol_sub[1] + vol_sub[0]);
+}
+
+const int DIR_VOL_TO_CONVMAT   = 0; // nvcc does not support enum instantiation?
+const int DIR_VOL_FROM_CONVMAT = 1;
+
+template<int dir>
+void __global__ kernelCpyVolConvmat (CpyImpl ip) {
+  mwSize indCM = blockDim.x * blockIdx.x + threadIdx.x;
+  if ( indCM > (ip.convmat.H*ip.convmat.W) ) return;
+
+  // fill h, w
+  mwSize h = get_convmat_h(ip, indCM); // convmat dim1
+  mwSize w = get_convmat_w(ip, indCM); // convmat dim2
+
+  // h (convmat dim1) -> window's offset (starting point) on volume (win_offset[3] = 0 as volume dim4 all in!)
+  int64_T win_offset[4]; // fill win_offset
+  get_win_offset4(ip, h, win_offset);
+
+  // w (convmat dim2) -> win_sub ( r,s,t,u the subscript within the window )
+  mwSize win_sub[4]; // (r, s, t, u) 
+  get_win_sub4(ip, w, win_sub);
+
+  // win_offset[4] and win_sub[4] -> linear index, ind, on volume
+  int64_T indVol = get_indVol(ip, win_offset, win_sub);
+  
+  // copy the data at indCM, indVol
+  if (indVol < 0) {
+    if (dir == DIR_VOL_TO_CONVMAT) 
+      ip.convmat.beg[indCM] = 0.0; // pad zeros!
+    //else: DIR_VOL_FROM_CONVMAT, do nothing
+    return;
+  }
+  
+  if (dir == DIR_VOL_TO_CONVMAT) // vol -> convmat
+    ip.convmat.beg[indCM] = ip.vol_i.beg[indVol];
+  else { // DIR_VOL_FROM_CONVMAT, vol <- convmat
+    // ATOMIC increment: ip.vol_i.beg[indVol] += ip.convmat.beg[indCM]
+    atomicAdd( (ip.vol_i.beg + indVol), ip.convmat.beg[indCM]);
+  }
+}
 
 } // namespace
 
@@ -134,19 +162,20 @@ void conv3d_blas_gpu::fprop()
   init_u(); 
 
   // iterate over each training instance
+  CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
   mwSize N = X.getSizeAtDim(4);
   for (mwSize i = 0; i < N; i++) {
     // make phiX: the convolution matrix
-    vol_to_convmat(X, i);
+    vol_to_convmat(ip, X, i);
 
     // convolution: Y_ = phiX * F_
     matw F_ = make_F_();
     matw Y_ = make_Y_(i);
-    AxBtoC(convmat, F_, Y_, true); // overwrite Y_
+    cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ TODO: the right cublas!
 
     // plus the bias: Y_ += u * B
     matw B_ = make_B_();
-    AxBtoC(u, B_, Y_, false); // accumulation on Y_
+    cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
   }
 
   free_u();
@@ -162,26 +191,28 @@ void conv3d_blas_gpu::bprop()
   init_convmat();
   init_u();
 
-  mwSize N = X.getSizeAtDim(4);
+  // iterate over each instance
+  CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
   matw dF_ = make_dF_();
   matw dB_ = make_dB_();
+  mwSize N = X.getSizeAtDim(4);
   for (mwSize i = 0; i < N; ++i) {
     // make phiX: the convolution matrix
-    vol_to_convmat(X, i);
+    vol_to_convmat(ip, X, i);
 
     // dF += phiX' * dY_
     matw dY_ = make_dY_(i);
-    ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_
+    cu_ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_ TODO: the right cublas
 
     // dB += u' * dY
-    ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
+    cu_ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
 
     // dphiX = dY * F'
     matw F_ = make_F_();
-    // safe to reuse convmat memory, remember to overwrite it!
-    AxBTtoC(dY_, F_, convmat, true);
+    // safe to reuse convmat memory as X and dX have the same size; remember to overwrite it!
+    cu_AxBTtoC(dY_, F_, convmat, true);
     // dX(:,:,:,:,i) <-- dphiX
-    vol_from_convmat(dX, i);
+    vol_from_convmat(ip, dX, i);
   }
 
   free_u();
@@ -251,6 +282,27 @@ matw conv3d_blas_gpu::make_dB_()
 }
 
 //// Impl of helper: the stacked matrix storing phiX or dphiX
+conv3d_blas_gpu::CpyVolConvmatImpl conv3d_blas_gpu::make_initial_CpyVolConvmatImpl(const xpuMxArrayTW &vol)
+{
+  CpyVolConvmatImpl ip;
+
+  ip.vol_i.beg = 0; // to be set later
+  for (int i = 0; i < 4; ++i) ip.vol_i.sz[i] = vol.getSizeAtDim(i);
+
+  ip.convmat = this->convmat;
+
+  if ( Y.pa_cpu != 0)
+    for (int i = 0; i < 3; ++i) ip.szY[i] = this->Y.getSizeAtDim(i);
+  else // dY.pa_cpu != 0
+    for (int i = 0; i < 3; ++i) ip.szY[i] = this->dY.getSizeAtDim(i);
+
+  for (int i = 0; i < 3; ++i) ip.szF[i] = this->F.getSizeAtDim(i);
+  for (int i = 0; i < 3; ++i) ip.stride[i] = this->stride[i];
+  for (int i = 0; i < 6; i++) ip.pad[i] = this->pad[i];
+
+  return ip;
+}
+
 void conv3d_blas_gpu::init_convmat()
 {
   // set the size
@@ -269,7 +321,8 @@ void conv3d_blas_gpu::init_convmat()
   if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
   convmat.beg = (float*)tmp;
 
-  // TODO: assures all zeros
+  // assures all zeros
+  kernelSetZero<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(convmat.beg, nelem);
   
 }
 
@@ -278,14 +331,28 @@ void conv3d_blas_gpu::free_convmat()
   cudaFree( (void*)convmat.beg );
 }
 
-void conv3d_blas_gpu::vol_to_convmat(xpuMxArrayTW &pvol, mwSize iInst)
+void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
-  cpy_convmat_vol<VOL_TO_CONVMAT>(pvol, iInst);
+  // set vol(:,:,:,:, i)
+  ip.vol_i.beg = getVolInstDataBeg<float>(vol, iInst);
+
+  // do the real job
+  mwSize nelem = ip.convmat.H * ip.convmat.W;
+  dim3 blkSize( ceil_divide(nelem, NUM_THD_DIM) );
+  dim3 thdSize( NUM_THD_DIM );
+  kernelCpyVolConvmat<DIR_VOL_TO_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
 
-void conv3d_blas_gpu::vol_from_convmat(xpuMxArrayTW &pvol, mwSize iInst)
+void conv3d_blas_gpu::vol_from_convmat(CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
-  cpy_convmat_vol<VOL_FROM_CONVMAT>(pvol, iInst);
+  // set vol(:,:,:,:, i)
+  ip.vol_i.beg = getVolInstDataBeg<float>(vol, iInst);
+
+  // do the real job
+  mwSize nelem = ip.convmat.H * ip.convmat.W;
+  dim3 blkSize( ceil_divide(nelem, NUM_THD_DIM) );
+  dim3 thdSize( NUM_THD_DIM );
+  kernelCpyVolConvmat<DIR_VOL_FROM_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
 
 void conv3d_blas_gpu::init_u()
@@ -306,70 +373,11 @@ void conv3d_blas_gpu::init_u()
   if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
   u.beg = (float*) tmp;
 
-  // TODO: make sure all one
-
+  // make sure all one
+  kernelSetOne<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(u.beg, nelem);
 }
 
 void conv3d_blas_gpu::free_u()
 {
   cudaFree( (void*)u.beg );
-}
-
-////
-template<conv3d_blas_gpu::DIR how> 
-void conv3d_blas_gpu::cpy_convmat_vol (xpuMxArrayTW &pvol, mwSize iInst)
-{
-  // v: [H,   W,   D,   P]
-  // F: [H',  W',  D',  P]
-  // Y: [H'', W'', D'', 1]
-  // convmat: [H''W''D''  H'W'D'P]
-
-  // the big volume size and the sub volume
-  mwSize H = pvol.getSizeAtDim(0), W = pvol.getSizeAtDim(1), 
-    D = pvol.getSizeAtDim(2), P = pvol.getSizeAtDim(3);
-  subvol4D sv;
-  sv.beg = getVolInstDataBeg<float>(pvol, iInst);
-  for (int i = 0; i < 4; ++i) sv.size[i] = F.getSizeAtDim(i);
-  sv.sizeBigVol[0] = H;
-  sv.sizeBigVol[1] = W;
-  sv.sizeBigVol[2] = D;
-  sv.sizeBigVol[3] = P;
-  sv.stride[0] = 1; // always
-  sv.stride[1] = H;
-  sv.stride[2] = H*W;
-  sv.stride[3] = H*W*D;
-
-  // iterate over the big volume... 
-  // ...and set the offset for the sub volume attaching to the big volume
-  int64_T dim2_beg = -static_cast<int64_T>(pad[4]), 
-    dim2_end =  static_cast<int64_T>(D + pad[5]);
-  int64_T dim1_beg = -static_cast<int64_T>(pad[2]),
-    dim1_end =  static_cast<int64_T>(W + pad[3]);
-  int64_T dim0_beg = -static_cast<int64_T>(pad[0]), 
-    dim0_end =  static_cast<int64_T>(H + pad[1]);
-  int64_T FH = (int64_T)F.getSizeAtDim(0), 
-    FW = (int64_T)F.getSizeAtDim(1), 
-    FD = (int64_T)F.getSizeAtDim(2); 
-  mwSize row = 0;
-
-  sv.offset[3] = 0; // never slide at dim3 !
-  for (int64_T k = dim2_beg; k < (dim2_end - FD + 1); k += this->stride[2]) { // slide at dim2
-    sv.offset[2] = k;
-
-    for (int64_T j = dim1_beg; j < (dim1_end - FW + 1); j += this->stride[1]) { // slide at dim1
-      sv.offset[1] = j;
-
-      for (int64_T i = dim0_beg; i < (dim0_end - FH + 1); i += this->stride[0]) { // slide at dim0
-        sv.offset[0] = i;
-
-        if (how == VOL_TO_CONVMAT)
-          sv.copy_to_row(convmat, row);
-        else // VOL_FROM_CONVMAT
-          sv.copy_and_inc_from_row(convmat, row);
-
-        // step to next row, should be consistent with i,j,k,p
-        ++row;
-      } // i
-    } // j
-  }// k 
 }

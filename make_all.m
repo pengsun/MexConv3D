@@ -51,7 +51,10 @@ if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('_conv3d_blas_gpu.cu') ;
 end
 % common
-lib_src{end+1} = fullfile('wrapperBlas.cpp') ;
+lib_src{end+1} = fullfile('wrapperBlas_cpu.cpp') ;
+if opts.enableGpu % GPU-specific files
+  lib_src{end+1} = fullfile('wrapperBlas_gpu.cu') ;
+end
 lib_src{end+1} = fullfile('wrapperMx.cpp') ;
 lib_src = cellfun( @(x) fullfile('src',x),...
   lib_src, 'UniformOutput',false);

@@ -1,6 +1,11 @@
 #include "conv3d.h"
 #include "_conv3d_blas_cpu.h"
+#ifdef WITH_GPUARRAY
+#include "wrapperBlas.h"
 #include "_conv3d_blas_gpu.h"
+#endif // WITH_GPUARRAY
+
+
 
 //// Impl of conv3d
 const char* conv3d::THE_CMD = 
@@ -81,6 +86,14 @@ void conv3d::create_dB()
 }
 
 
+//// impl of cleanup after mex exit
+void conv3d_releaseAtMexExit()
+{
+#ifdef WITH_GPUARRAY
+  release_cublas_context(); // used by _conv3d_blas_gpu
+#endif // WITH_GPUARRAY
+}
+
 //// impl of conv3d_ex
 conv3d_ex::conv3d_ex(const char* msg)
   : exception(msg)
@@ -138,12 +151,17 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
 
   // TODO: gpu version here
   xpuMxArrayTW::DEV_TYPE dt;
+
+#ifdef WITH_GPUARRAY
   if (dt == xpuMxArrayTW::CPU)
     return new conv3d_blas_cpu(holder);
   else if (dt == xpuMxArrayTW::GPU)
     return new conv3d_blas_gpu(holder);
   else
     assert(false, "what the???");
+#else
+  return new conv3d_blas_cpu(holder);
+#endif // WITH_GPUARRAY
 }
 
 void factory_c3d_homebrew::set_options(conv3d &holder, int opt_beg, int ni, mxArray const *vi[])
@@ -188,4 +206,3 @@ void factory_c3d_homebrew::check_type(const conv3d &holder)
   if (!flag) 
     throw conv3d_ex("In bprop(), X, F, B, dZdY must be all gpuArray or mxArray.\n");
 }
-

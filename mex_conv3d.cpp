@@ -2,12 +2,15 @@
 #include "src/conv3d.h"
 #include "src/wrapperMx.h"
 
+
 // "Y = MEX_CONV3D(X,F,B); forward pass"
 // "[dX,dF,dB] = MEX_CONV3D(X,F,B, dY); backward pass"
 // "MEX_CONV3D(..., 'stride',s, 'pad',pad); options"
 void mexFunction(int no, mxArray       *vo[],
                  int ni, mxArray const *vi[])
 {
+  mexAtExit( conv3d_releaseAtMexExit );
+
 #ifdef WITHCUDNN
   factory_c3d_withcudnn factory;
 #else
