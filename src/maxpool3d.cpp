@@ -101,6 +101,7 @@ mp3d_ex::mp3d_ex(const char* msg)
 
 
 //// Impl of factory
+
 maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mxArray const *vi[])
 {
   if (ni < 1) 

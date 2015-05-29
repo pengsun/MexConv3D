@@ -164,10 +164,13 @@ mxArray* createVol5d(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
     return mxCreateNumericArray(5, sz, mxSINGLE_CLASS, mxREAL);
 
 #ifdef WITH_GPUARRAY
-  mxGPUArray* p = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+  mxGPUArray* tmp = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
   LOGMSG("createVol5d: on GPU, %d KB.\n", 
     toKB(sz[0]*sz[1]*sz[2]*sz[3]*sz[4], mxSINGLE_CLASS));
-  return mxGPUCreateMxArrayOnGPU(p);
+  
+  mxArray* pa = mxGPUCreateMxArrayOnGPU(tmp);
+  mxGPUDestroyGPUArray(tmp);
+  return pa;
 #endif // WITH_GPUARRAY
 }
 
@@ -177,10 +180,13 @@ mxArray* createVol5dZeros(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
     return mxCreateNumericArray(5, sz, mxSINGLE_CLASS, mxREAL);
 
 #ifdef WITH_GPUARRAY
-  mxGPUArray* p = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_INITIALIZE_VALUES);
+  mxGPUArray* tmp = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_INITIALIZE_VALUES);
   LOGMSG("createVol5dZeros: on GPU, %d KB.\n", 
     toKB(sz[0]*sz[1]*sz[2]*sz[3]*sz[4], mxSINGLE_CLASS) );
-  return mxGPUCreateMxArrayOnGPU(p);
+
+  mxArray* pa = mxGPUCreateMxArrayOnGPU(tmp);
+  mxGPUDestroyGPUArray(tmp);
+  return pa;
 #endif // WITH_GPUARRAY
 }
 
@@ -192,12 +198,15 @@ mxArray* createVol5dLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE_CLAS
                                 tp, mxREAL);
 
 #ifdef WITH_GPUARRAY
-  mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
+  mxGPUArray* tmp = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
                                       mxGPUGetDimensions(rhs.pa_gpu),
                                       tp, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
   LOGMSG("createVol5dLike: on GPU, %d KB.\n", 
     toKB(numel(rhs), tp) );
-  return mxGPUCreateMxArrayOnGPU(p);
+
+  mxArray* pa = mxGPUCreateMxArrayOnGPU(tmp);
+  mxGPUDestroyGPUArray(tmp);
+  return pa;
 #endif // WITH_GPUARRAY
 }
 
@@ -209,12 +218,16 @@ mxArray* createVol5dZerosLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE
     tp, mxREAL); // 0s ensured
 
 #ifdef WITH_GPUARRAY
-  mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
+  mxGPUArray* tmp = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
     mxGPUGetDimensions(rhs.pa_gpu),
     tp, mxREAL, MX_GPU_INITIALIZE_VALUES); // with 0s
+
   LOGMSG("createVol5dZerosLike: on GPU, %d KB.\n", 
     toKB(numel(rhs), tp));
-  return mxGPUCreateMxArrayOnGPU(p);
+
+  mxArray* pa = mxGPUCreateMxArrayOnGPU(tmp);
+  mxGPUDestroyGPUArray(tmp);
+  return pa;
 #endif // WITH_GPUARRAY
 }
 
@@ -228,5 +241,3 @@ mwSize numel(const xpuMxArrayTW &rhs)
   // else (rhs.dt == xpuMxArrayTW::CPU)
   return mxGetNumberOfElements(rhs.pa_cpu);
 }
-
-

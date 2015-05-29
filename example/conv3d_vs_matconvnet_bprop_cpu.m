@@ -1,4 +1,4 @@
-function conv3d_vs_matconvnet_bprop()
+function conv3d_vs_matconvnet_bprop_cpu()
 disp( 'dim1, dim2 as 2d conv' )
 szX = [13,10,1, 2, 5];
 szF = [3, 5, 1, 2, 4];
