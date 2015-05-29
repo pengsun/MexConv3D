@@ -1,21 +1,22 @@
 function make_all()
 % adopted from the VL_COMPILENN.m which is part of MatConvNet toolbox
-
+%
+% Modify the options for different ways of compilation:
+% opts.enableGpu: supports gpuArray, need CUDA toolkit installed
+% opts.enableOpenmp: openmp support
+% opts.verbose: verbosity when compiling
+% opts.debug: debug
+% opts.printLog: print log message in runtime
+%
+% original license info:
 % Copyright (C) 2014 Karel Lenc and Andrea Vedaldi.
 % All rights reserved.
 %
 % This file is part of the VLFeat library and is made available under
 % the terms of the BSD license (see the COPYING file).
 
-% Get this root directory
-root = fileparts(mfilename('fullpath')) ;
-
-% --------------------------------------------------------------------
-%                                                        Parse options
-% --------------------------------------------------------------------
-
+%% Options
 opts.enableGpu        = true;
-opts.enableCudnn      = false;
 opts.enableOpenmp     = true;
 opts.verbose          = 1;
 opts.debug            = false;
@@ -32,16 +33,13 @@ if opts.enableGpu
 else
   opts.cudaMethod = '';
 end
-
-% --------------------------------------------------------------------
-%                                                     Files to compile
-% --------------------------------------------------------------------
-
+opts.enableCudnn = false; 
+% not implemented yet (3D conv may be available in future cudnn release?)
+%% Files to compile
 %%% mex gateway source
 mex_src = {} ; 
 mex_src{end+1} = fullfile('mex_conv3d.cpp');
 mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
-
 
 %%% lib source
 lib_src = {} ; 
@@ -64,11 +62,7 @@ if opts.enableGpu % GPU-specific files
 end
 lib_src{end+1} = fullfile('wrapperMx.cpp') ;
 
-
-
-% --------------------------------------------------------------------
-%                                                   Setup CUDA toolkit
-% --------------------------------------------------------------------
+%% Setup CUDA toolkit
 arch = computer('arch') ;
 
 if opts.enableGpu
@@ -100,9 +94,9 @@ if opts.enableGpu
   end
 end
 
-% --------------------------------------------------------------------
-%                                                     Compiler options
-% --------------------------------------------------------------------
+%% Compiler options
+% Get this root directory
+root = fileparts(mfilename('fullpath')) ;
 
 % Build directories
 mex_dir = '.' ;
@@ -229,10 +223,7 @@ if ( opts.verbose && opts.enableGpu && strcmp(opts.cudaMethod,'nvcc') )
     mfilename, strjoin(flags.nvcc)) ;
 end
 
-% --------------------------------------------------------------------
-%                                                              Compile
-% --------------------------------------------------------------------
-
+%% Compile
 % convert all to absolute path
 mex_src = cellfun( @(x) fullfile(root,x),...
   mex_src, 'UniformOutput',false);
@@ -244,6 +235,7 @@ if (~exist(bld_dir,'dir')), mkdir(bld_dir); end
 
 % Intermediate object files
 srcs = horzcat(lib_src,mex_src) ;
+%%% compile all with nvcc is slow, but necessary when debugging device code
 for i = 1 : numel( srcs )
   if strcmp(opts.cudaMethod,'nvcc')
     nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
@@ -251,6 +243,21 @@ for i = 1 : numel( srcs )
     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
   end
 end
+% %%% this code compiles faster, but cannot debug the device code,
+% %%% deprecated
+% for i = 1 : numel( srcs )
+%   [~,~,ext] = fileparts(srcs{i});
+%   if strcmp(ext, '.cu') 
+%     if strcmp(opts.cudaMethod,'nvcc')
+%       nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
+%     else
+%       mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
+%     end
+%   else
+%     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
+%   end
+% end
+
 
 % Link into MEX files
 for i = 1:numel(mex_src)
@@ -264,11 +271,7 @@ if ( ~opts.debug )
   rmdir( bld_dir );
 end
 
-% --------------------------------------------------------------------
-%                                                    Utility functions
-% --------------------------------------------------------------------
-
-% --------------------------------------------------------------------
+%% Utility functions
 function objs = toobj(bld_dir,srcs)
 % --------------------------------------------------------------------
 root = fileparts(mfilename('fullpath')) ;
@@ -277,7 +280,6 @@ objs = strrep(objs,'.cpp',['.' objext()]) ;
 objs = strrep(objs,'.cu',['.' objext()]) ;
 objs = strrep(objs,'.c',['.' objext()]) ;
 
-% --------------------------------------------------------------------
 function delobj(objfiles)
 % --------------------------------------------------------------------
 % suppress the warning
@@ -287,7 +289,6 @@ for i = 1 : numel(objfiles)
 end
 %cellfun( @(x) delete(x), objfiles);
 
-% --------------------------------------------------------------------
 function mex_compile(opts, src, tgt, mex_opts)
 % --------------------------------------------------------------------
 mopts = {'-outdir', fileparts(tgt), src, '-c', mex_opts{:}} ;
@@ -296,7 +297,6 @@ if opts.verbose
 end
 mex(mopts{:}) ;
 
-% --------------------------------------------------------------------
 function nvcc_compile(opts, src, tgt, nvcc_opts)
 % --------------------------------------------------------------------
 nvcc_path = fullfile(opts.cudaRoot, 'bin', 'nvcc');
@@ -309,7 +309,6 @@ end
 status = system(nvcc_cmd);
 if status, error('Command %s failed.', nvcc_cmd); end;
 
-% --------------------------------------------------------------------
 function mex_link(opts, objs, mex_dir, mex_flags)
 % --------------------------------------------------------------------
 mopts = {'-outdir', mex_dir, mex_flags{:}, objs{:}} ;
@@ -318,7 +317,6 @@ if opts.verbose
 end
 mex(mopts{:}) ;
 
-% --------------------------------------------------------------------
 function ext = objext()
 % --------------------------------------------------------------------
 % Get the extension for an 'object' file for the current computer
@@ -329,7 +327,6 @@ switch computer('arch')
   otherwise, error('Unsupported architecture %s.', computer) ;
 end
 
-% --------------------------------------------------------------------
 function conf_file = mex_cuda_config(root)
 % --------------------------------------------------------------------
 % Get mex CUDA config file
@@ -347,7 +344,6 @@ end
 conf_file = fullfile(config_dir, ['mex_CUDA_' arch '.' ext]);
 fprintf('%s:\tCUDA: MEX config file: ''%s''\n', mfilename, conf_file);
 
-% --------------------------------------------------------------------
 function check_clpath()
 % --------------------------------------------------------------------
 % Checks whether the cl.exe is in the path (needed for the nvcc). If
@@ -372,7 +368,6 @@ if (status ~= 0)
   end
 end
 
-% -------------------------------------------------------------------------
 function paths = which_nvcc(opts)
 % -------------------------------------------------------------------------
 switch computer('arch')
@@ -385,7 +380,6 @@ switch computer('arch')
     paths = strtrim(paths) ;
 end
 
-% -------------------------------------------------------------------------
 function cuda_root = search_cuda_devkit(opts)
 % -------------------------------------------------------------------------
 % This function tries to to locate a working copy of the CUDA Devkit.
@@ -434,7 +428,6 @@ if opts.verbose
           mfilename, nvcc.path, nvcc.version) ;
 end
 
-% -------------------------------------------------------------------------
 function [valid, cuver]  = validate_nvcc(opts, nvcc_path)
 % -------------------------------------------------------------------------
 valid = false ;
@@ -448,7 +441,6 @@ match = regexp(output, 'V(\d+\.\d+\.\d+)', 'match') ;
 if isempty(match), valid = false ; return ; end
 cuver = [1e4 1e2 1] * sscanf(match{1}, 'V%d.%d.%d') ;
 
-% --------------------------------------------------------------------
 function check_nvcc(cuda_root)
 % --------------------------------------------------------------------
 % Checks whether the nvcc is in the path. If not, guessed out of CudaRoot.
@@ -471,7 +463,6 @@ if status ~= 0
   end
 end
 
-% --------------------------------------------------------------------
 function cudaArch = get_cuda_arch(opts)
 % --------------------------------------------------------------------
 if opts.verbose 
@@ -493,4 +484,3 @@ catch
   end
   cudaArch = opts.defCudaArch;
 end
-

@@ -52,7 +52,7 @@ cmp_3d2d(szX, szF, szB,...
 
 function cmp_3d2d(szX, szF, szB, pad3d, stride3d, pad2d, stride2d)
 
-ran = 50;
+ran = 1;
 
 % gen data
 X = ran * gpuArray.randn(szX, 'single');
@@ -76,7 +76,8 @@ disp('size(Y2) as 2d conv:')
 disp(size(Y2))
 
 % the values should be same
+tau = ran * 1e-6; 
+
 diff_Y = abs(Y1(:)-Y2(:));
-tau = 1e-8; 
 fprintf('assert Y1 - Y2 is very small\n\n\n');
 assert( all( gather(diff_Y) < gather(tau) ) );

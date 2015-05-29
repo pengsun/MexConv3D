@@ -1,6 +1,6 @@
 function run_all ()
 %% config
-rng(81192, 'twister');
+% rng(81192, 'twister');
 
 run_type('cpu');
 % run_type('gpu');

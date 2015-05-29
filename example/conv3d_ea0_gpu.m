@@ -1,5 +1,5 @@
 %% data
-szX = [64,64,64, 5, 2];
+szX = [32,32,32, 5, 2];
 szF = [4,4,4, 5,4];
 szB = [1, szF(end)];
 X = gpuArray.rand(szX, 'single');
