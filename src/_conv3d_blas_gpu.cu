@@ -1,5 +1,6 @@
 #include "cuda_runtime.h"
 #include "_conv3d_blas_gpu.h"
+#include "logmsg.h"
 
 namespace {
 //// helpers for threads
@@ -338,11 +339,13 @@ void conv3d_blas_gpu::init_convmat()
   // assures all zeros
   kernelSetZero<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(convmat.beg, nelem);
   
+  LOGMSG("conv3d_blas_gpu::init_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
 
 void conv3d_blas_gpu::free_convmat()
 {
   cudaFree( (void*)convmat.beg );
+  LOGMSG("conv3d_blas_gpu::free_convmat()\n");
 }
 
 void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
@@ -389,9 +392,13 @@ void conv3d_blas_gpu::init_u()
 
   // make sure all one
   kernelSetOne<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(u.beg, nelem);
+
+  LOGMSG("conv3d_blas_gpu::init_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
 
 void conv3d_blas_gpu::free_u()
 {
   cudaFree( (void*)u.beg );
+
+  LOGMSG("conv3d_blas_gpu::free_u()\n");
 }

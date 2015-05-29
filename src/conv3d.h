@@ -8,6 +8,7 @@ struct conv3d {
   enum CALL_TYPE {FPROP, BPROP}; // way of calling
 
   conv3d ();
+  virtual ~conv3d ();
 
   // options
   CALL_TYPE ct;

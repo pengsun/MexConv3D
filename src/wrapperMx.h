@@ -45,7 +45,7 @@ bool setCArray (mxArray const *pa, T arr[]) {
 }
 
 
-//// Thin wrapper for mxArray, which can be mxGPUArray
+//// Thin wrapper for mxArray, which can be mxGPUArray. Never owns data.
 struct xpuMxArrayTW {
   enum DEV_TYPE {CPU, GPU};
 
@@ -72,7 +72,7 @@ struct xpuMxArrayTW {
 };
 
 
-//// Shorthand for xpuMxArrayTW (as Volume 3D + 2D)
+//// Shorthand for xpuMxArrayTW (as Volume 3D + 2D): creation
 mxArray* createVol5d (mwSize sz[], xpuMxArrayTW::DEV_TYPE dt);
 
 mxArray* createVol5dZeros (mwSize sz[], xpuMxArrayTW::DEV_TYPE dt);
@@ -81,6 +81,8 @@ mxArray* createVol5dLike (const xpuMxArrayTW &rhs, mxClassID tp = mxSINGLE_CLASS
 
 mxArray* createVol5dZerosLike(const xpuMxArrayTW &rhs, mxClassID tp = mxSINGLE_CLASS);
 
+
+//// Shorthand for xpuMxArrayTW (as Volume 3D + 2D): data access
 template<typename T> inline 
 T* getVolDataBeg(const xpuMxArrayTW &rhs, mwSize iVol = 0) {
   mwSize stride = rhs.getSizeAtDim(0) * rhs.getSizeAtDim(1) * rhs.getSizeAtDim(2);

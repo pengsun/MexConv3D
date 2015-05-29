@@ -1,4 +1,4 @@
-function make_all()
+function make_all_tmp()
 % adopted from the VL_COMPILENN.m which is part of MatConvNet toolbox
 
 % Copyright (C) 2014 Karel Lenc and Andrea Vedaldi.
@@ -39,30 +39,12 @@ end
 
 %%% mex gateway source
 mex_src = {} ; 
-mex_src{end+1} = fullfile('mex_conv3d.cpp');
-mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
+mex_src{end+1} = fullfile('temp2.cu');
 
 
 %%% lib source
 lib_src = {} ; 
-% max pool3d
-lib_src{end+1} = fullfile('maxpool3d.cpp') ;
-lib_src{end+1} = fullfile('_maxpool3d_cpu.cpp') ;
-if opts.enableGpu % GPU-specific files
-  lib_src{end+1} = fullfile('_maxpool3d_gpu.cu') ;
-end
-% conv3d
-lib_src{end+1} = fullfile('conv3d.cpp') ;
-lib_src{end+1} = fullfile('_conv3d_blas_cpu.cpp') ;
-if opts.enableGpu % GPU-specific files
-  lib_src{end+1} = fullfile('_conv3d_blas_gpu.cu') ;
-end
-% common
-lib_src{end+1} = fullfile('wrapperBlas_cpu.cpp') ;
-if opts.enableGpu % GPU-specific files
-  lib_src{end+1} = fullfile('wrapperBlas_gpu.cu') ;
-end
-lib_src{end+1} = fullfile('wrapperMx.cpp') ;
+lib_src{end+1} = fullfile('../src/wrapperMx.cpp') ;
 
 
 
@@ -236,7 +218,7 @@ end
 % convert all to absolute path
 mex_src = cellfun( @(x) fullfile(root,x),...
   mex_src, 'UniformOutput',false);
-lib_src = cellfun( @(x) fullfile(root,'src',x),...
+lib_src = cellfun( @(x) fullfile(root,x),...
   lib_src, 'UniformOutput',false);
 mex_dir = fullfile(root, mex_dir) ;
 bld_dir = fullfile(root, bld_dir) ;

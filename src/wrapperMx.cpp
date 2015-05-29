@@ -1,9 +1,11 @@
 #include "wrapperMx.h"
+#include "logmsg.h"
 
 
 //// Impl of xpuMxArray
 xpuMxArrayTW::xpuMxArrayTW()
 {
+  LOGMSG("xpuMxArrayTW Constructor\n");
   pa_cpu = 0;
   pa_gpu = 0;
   dt = CPU;
@@ -11,14 +13,21 @@ xpuMxArrayTW::xpuMxArrayTW()
 
 xpuMxArrayTW::~xpuMxArrayTW()
 {
+  LOGMSG("xpuMxArrayTW Destructor ");
+  LOGMSG("[%d %d %d %d %d]",
+    getSizeAtDim(0),getSizeAtDim(1),getSizeAtDim(2),
+    getSizeAtDim(3),getSizeAtDim(4));
+
   pa_cpu = 0;
 #ifdef WITH_GPUARRAY
   if (dt == GPU) {// always do this according to Matlab Doc
     assert(pa_gpu != 0);
+    LOGMSG("(mxGPU hearder destroyed) ");
     mxGPUDestroyGPUArray(pa_gpu);
     pa_gpu = 0;
   }
 #endif // WITH_GPUARRAY
+  LOGMSG("\n");
 }
 
 xpuMxArrayTW::xpuMxArrayTW(const xpuMxArrayTW& rhs)
@@ -55,6 +64,8 @@ xpuMxArrayTW& xpuMxArrayTW::operator=(const xpuMxArrayTW& rhs)
 
 mwSize xpuMxArrayTW::getNDims() const
 {
+  if (pa_cpu == 0) return 0;
+
 #ifdef WITH_GPUARRAY
   if (dt == GPU) // always do this according to Matlab Doc
     return mxGPUGetNumberOfDimensions(pa_gpu);
@@ -66,6 +77,8 @@ mwSize xpuMxArrayTW::getNDims() const
 
 mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim) const
 {
+  if (pa_cpu == 0) return 0;
+
   mwSize ndim = getNDims();
   if (dim >= ndim) return 1;
 
@@ -105,19 +118,34 @@ void* xpuMxArrayTW::getDataBeg() const
 
 void xpuMxArrayTW::setMxArray(mxArray *pa)
 {
+  LOGMSG("xpuMxArrayTW::setMxArray() ");
+  // forget the previous mxArray, attach to the new one
   pa_cpu = pa;
   dt = CPU;
 
 #ifdef WITH_GPUARRAY
   if (mxIsGPUArray(pa)) {
+    // release old gpuArray, if any
+    if (pa_gpu != 0) {
+      mxGPUDestroyGPUArray(pa_gpu);
+      LOGMSG("(mxGPU hearder destroyed) ");
+    }
+
+    // point to the new one
     pa_gpu = (mxGPUArray*) mxGPUCreateFromMxArray(pa);
     dt = GPU;
   }
 #endif // WITH_GPUARRAY
+  LOGMSG("[%d %d %d %d %d]\n", getSizeAtDim(0),getSizeAtDim(1),getSizeAtDim(2),
+    getSizeAtDim(3),getSizeAtDim(4));
 }
 
 mxArray* xpuMxArrayTW::getMxArray() const
 {
+  LOGMSG("xpuMxArrayTW::getMxArray() ");
+  LOGMSG("[%d %d %d %d %d]\n", 
+    getSizeAtDim(0),getSizeAtDim(1),getSizeAtDim(2),
+    getSizeAtDim(3),getSizeAtDim(4));
   return pa_cpu;
 }
 
@@ -129,6 +157,8 @@ mxArray* createVol5d(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
 
 #ifdef WITH_GPUARRAY
   mxGPUArray* p = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+  LOGMSG("createVol5d: on GPU, %d KB.\n", 
+    toKB(sz[0]*sz[1]*sz[2]*sz[3]*sz[4], mxSINGLE_CLASS));
   return mxGPUCreateMxArrayOnGPU(p);
 #endif // WITH_GPUARRAY
 }
@@ -140,6 +170,8 @@ mxArray* createVol5dZeros(mwSize sz[], xpuMxArrayTW::DEV_TYPE dt)
 
 #ifdef WITH_GPUARRAY
   mxGPUArray* p = mxGPUCreateGPUArray(5, sz, mxSINGLE_CLASS, mxREAL, MX_GPU_INITIALIZE_VALUES);
+  LOGMSG("createVol5dZeros: on GPU, %d KB.\n", 
+    toKB(sz[0]*sz[1]*sz[2]*sz[3]*sz[4], mxSINGLE_CLASS) );
   return mxGPUCreateMxArrayOnGPU(p);
 #endif // WITH_GPUARRAY
 }
@@ -155,6 +187,8 @@ mxArray* createVol5dLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE_CLAS
   mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
                                       mxGPUGetDimensions(rhs.pa_gpu),
                                       tp, mxREAL, MX_GPU_DO_NOT_INITIALIZE);
+  LOGMSG("createVol5dLike: on GPU, %d KB.\n", 
+    toKB(numel(rhs), tp) );
   return mxGPUCreateMxArrayOnGPU(p);
 #endif // WITH_GPUARRAY
 }
@@ -170,10 +204,11 @@ mxArray* createVol5dZerosLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE
   mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
     mxGPUGetDimensions(rhs.pa_gpu),
     tp, mxREAL, MX_GPU_INITIALIZE_VALUES); // with 0s
+  LOGMSG("createVol5dZerosLike: on GPU, %d KB.\n", 
+    toKB(numel(rhs), tp));
   return mxGPUCreateMxArrayOnGPU(p);
 #endif // WITH_GPUARRAY
 }
-
 
 mwSize numel(const xpuMxArrayTW &rhs)
 {

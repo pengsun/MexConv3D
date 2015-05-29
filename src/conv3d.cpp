@@ -22,6 +22,11 @@ conv3d::conv3d()
 
 }
 
+conv3d::~conv3d()
+{
+
+}
+
 //// Impl of helpers
 void conv3d::create_Y()
 {
