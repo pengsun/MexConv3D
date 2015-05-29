@@ -32,6 +32,8 @@ xpuMxArrayTW::~xpuMxArrayTW()
 
 xpuMxArrayTW::xpuMxArrayTW(const xpuMxArrayTW& rhs)
 {
+  LOGMSG("xpuMxArrayTW Copy-Constructor ");
+
   // always do these stuff
   dt     = rhs.dt;
   pa_cpu = rhs.pa_cpu;
@@ -39,15 +41,19 @@ xpuMxArrayTW::xpuMxArrayTW(const xpuMxArrayTW& rhs)
 
 #ifdef WITH_GPUARRAY
   if ( rhs.dt == xpuMxArrayTW::GPU ) { // hold its own
+    LOGMSG("(GPU data header created)");
     pa_gpu = (mxGPUArray*)mxGPUCreateFromMxArray(pa_cpu);
   }
 #endif // WITH_GPUARRAY
 
+  LOGMSG("\n");
   return;
 }
 
 xpuMxArrayTW& xpuMxArrayTW::operator=(const xpuMxArrayTW& rhs)
 {
+  LOGMSG("xpuMxArrayTW Operator= ");
+
   // always do these stuff
   dt     = rhs.dt;
   pa_cpu = rhs.pa_cpu;
@@ -55,10 +61,12 @@ xpuMxArrayTW& xpuMxArrayTW::operator=(const xpuMxArrayTW& rhs)
 
 #ifdef WITH_GPUARRAY
   if ( rhs.dt == xpuMxArrayTW::GPU ) { // hold its own
+    LOGMSG("(GPU data header created)");
     pa_gpu = (mxGPUArray*)mxGPUCreateFromMxArray(pa_cpu);
   }
 #endif // WITH_GPUARRAY
 
+  LOGMSG("\n");
   return *this;
 }
 

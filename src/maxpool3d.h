@@ -7,6 +7,7 @@ struct maxpool3d {
   enum CALL_TYPE {FPROP, BPROP}; // way of calling 
 
   maxpool3d ();
+  virtual ~maxpool3d ();
 
   // options
   CALL_TYPE ct;

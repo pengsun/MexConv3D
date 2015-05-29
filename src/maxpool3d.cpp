@@ -22,6 +22,10 @@ maxpool3d::maxpool3d()
   pad[0] = pad[1] = pad[2] = pad[3] = pad[4] = pad[5] = 0;
 }
 
+maxpool3d::~maxpool3d()
+{
+}
+
 void maxpool3d::check_dY_ind()
 {
   if (dY.getDevice() != ind.getDevice())
