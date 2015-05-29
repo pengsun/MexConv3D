@@ -1,5 +1,5 @@
 function tc_4(dg)
-desc = 'regular case, non-zero pad, stride bigger than 1';
+desc = 'case 4, regular, non-zero pad, stride bigger than 1';
 %%
 szX = [8, 8, 8, 5, 2];
 szF = [3, 2, 2, 5, 4];

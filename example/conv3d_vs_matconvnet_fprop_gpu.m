@@ -1,9 +1,9 @@
-function conv3d_vs_matconvnet_fprop()
+function conv3d_vs_matconvnet_fprop_gpu()
 disp('dim1, dim2 as 2d conv')
 szX = [13,10,1, 2, 5];
 szF = [3, 5, 1, 2, 4];
 szB = [1,4];
-pad = [0,2, 1,5, 0,0];
+pad = [2,0, 1,0, 0,0];
 stride = [2, 3, 1];
 
 cmp_3d2d(szX, szF, szB,...
@@ -41,6 +41,7 @@ cmp_3d2d(szX, szF, szB,...
 % pad = [2,1, 3,2, 0,0];
 % stride = [2, 1, 1];
 
+
 %%%
 % szX = [7, 7, 1, 3, 16];
 % szF = [3, 4, 1, 3, 5];
@@ -54,9 +55,9 @@ function cmp_3d2d(szX, szF, szB, pad3d, stride3d, pad2d, stride2d)
 ran = 50;
 
 % gen data
-X = ran * randn(szX, 'single');
-F = ran * randn(szF, 'single');
-B = ran * randn(szB, 'single');
+X = ran * gpuArray.randn(szX, 'single');
+F = ran * gpuArray.randn(szF, 'single');
+B = ran * gpuArray.randn(szB, 'single');
 
 % 3d conv
 Y1 = mex_conv3d(X,F,B,...
@@ -78,4 +79,4 @@ disp(size(Y2))
 diff_Y = abs(Y1(:)-Y2(:));
 tau = 1e-8; 
 fprintf('assert Y1 - Y2 is very small\n\n\n');
-assert( all( diff_Y < tau ) );
+assert( all( gather(diff_Y) < gather(tau) ) );

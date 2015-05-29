@@ -1,5 +1,5 @@
 function tc_5(dg)
-desc = 'full connection';
+desc = 'case 5, full connection';
 %%
 szX = [3, 3, 3, 4, 3];
 szF = [3, 3, 3, 4, 2];

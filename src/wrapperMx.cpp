@@ -55,13 +55,13 @@ xpuMxArrayTW& xpuMxArrayTW::operator=(const xpuMxArrayTW& rhs)
 
 mwSize xpuMxArrayTW::getNDims() const
 {
-  if (dt == CPU)
-    return mxGetNumberOfDimensions(pa_cpu);
-
 #ifdef WITH_GPUARRAY
   if (dt == GPU) // always do this according to Matlab Doc
     return mxGPUGetNumberOfDimensions(pa_gpu);
 #endif // WITH_GPUARRAY
+
+  // else (dt == CPU)
+  return mxGetNumberOfDimensions(pa_cpu);
 }
 
 mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim) const
@@ -69,13 +69,13 @@ mwSize xpuMxArrayTW::getSizeAtDim(mwSize dim) const
   mwSize ndim = getNDims();
   if (dim >= ndim) return 1;
 
-  if (dt == CPU)
-    return (mxGetDimensions(pa_cpu))[dim];
-
 #ifdef WITH_GPUARRAY
   if (dt == GPU)
     return (mxGPUGetDimensions(pa_gpu))[dim];
 #endif // WITH_GPUARRAY
+
+  // else (dt == CPU)
+  return (mxGetDimensions(pa_cpu))[dim];
 }
 
 xpuMxArrayTW::DEV_TYPE xpuMxArrayTW::getDevice() const
@@ -159,15 +159,31 @@ mxArray* createVol5dLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE_CLAS
 #endif // WITH_GPUARRAY
 }
 
-mwSize numel(const xpuMxArrayTW &rhs)
+mxArray* createVol5dZerosLike(const xpuMxArrayTW &rhs, mxClassID tp /*= mxSINGLE_CLASS*/)
 {
   if (rhs.dt == xpuMxArrayTW::CPU)
-    return mxGetNumberOfElements(rhs.pa_cpu);
+    return mxCreateNumericArray(mxGetNumberOfDimensions(rhs.pa_cpu), 
+    mxGetDimensions(rhs.pa_cpu), 
+    tp, mxREAL); // 0s ensured
 
+#ifdef WITH_GPUARRAY
+  mxGPUArray* p = mxGPUCreateGPUArray(mxGPUGetNumberOfDimensions(rhs.pa_gpu),
+    mxGPUGetDimensions(rhs.pa_gpu),
+    tp, mxREAL, MX_GPU_INITIALIZE_VALUES); // with 0s
+  return mxGPUCreateMxArrayOnGPU(p);
+#endif // WITH_GPUARRAY
+}
+
+
+mwSize numel(const xpuMxArrayTW &rhs)
+{
 #ifdef WITH_GPUARRAY
   if (rhs.dt == xpuMxArrayTW::GPU)
     return mxGPUGetNumberOfElements(rhs.pa_gpu);
 #endif // WITH_GPUARRAY
+
+  // else (rhs.dt == xpuMxArrayTW::CPU)
+  return mxGetNumberOfElements(rhs.pa_cpu);
 }
 
 

@@ -72,22 +72,22 @@ void conv3d::check_X_size()
 
 void conv3d::create_dX()
 {
-  dX.setMxArray( createVol5dLike(X) );
+  dX.setMxArray( createVol5dZerosLike(X) );
 }
 
 void conv3d::create_dF()
 {
-  dF.setMxArray( createVol5dLike(F) );
+  dF.setMxArray( createVol5dZerosLike(F) );
 }
 
 void conv3d::create_dB()
 {
-  dB.setMxArray( createVol5dLike(B) );
+  dB.setMxArray( createVol5dZerosLike(B) );
 }
 
 
 //// impl of cleanup after mex exit
-void conv3d_releaseAtMexExit()
+void conv3d_releaseWhenUnloadMex()
 {
 #ifdef WITH_GPUARRAY
   release_cublas_context(); // used by _conv3d_blas_gpu
@@ -118,7 +118,8 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
     if ( holder.X.getElemType() != mxSINGLE_CLASS || 
          holder.F.getElemType() != mxSINGLE_CLASS ||
          holder.B.getElemType() != mxSINGLE_CLASS) 
-      throw conv3d_ex("The first three arguments X, F, B should be all SINGLE type.");
+      throw conv3d_ex("The first three arguments X, F, B should be all SINGLE type,"
+                      "be all gpuArray or be all mxArray.\n");
 
     holder.ct = conv3d::FPROP;
     n_opt = 3;
@@ -135,7 +136,8 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
         holder.F.getElemType() != mxSINGLE_CLASS ||
         holder.B.getElemType() != mxSINGLE_CLASS ||
         holder.dY.getElemType() != mxSINGLE_CLASS)
-      throw conv3d_ex("The first four arguments X, F, B, dZdY should be SINGLE type");
+      throw conv3d_ex("The first four arguments X, F, B, dZdY should be SINGLE type,"
+                      "be all gpuArray or be all mxArray.\n");
 
     holder.ct = conv3d::BPROP;
     n_opt = 4;
@@ -149,19 +151,12 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
 
   set_options(holder, n_opt, ni, vi);
 
-  // TODO: gpu version here
-  xpuMxArrayTW::DEV_TYPE dt;
-
 #ifdef WITH_GPUARRAY
-  if (dt == xpuMxArrayTW::CPU)
-    return new conv3d_blas_cpu(holder);
-  else if (dt == xpuMxArrayTW::GPU)
+  if ( xpuMxArrayTW::GPU == holder.X.getDevice() )
     return new conv3d_blas_gpu(holder);
-  else
-    assert(false, "what the???");
-#else
-  return new conv3d_blas_cpu(holder);
 #endif // WITH_GPUARRAY
+
+  return new conv3d_blas_cpu(holder);
 }
 
 void factory_c3d_homebrew::set_options(conv3d &holder, int opt_beg, int ni, mxArray const *vi[])

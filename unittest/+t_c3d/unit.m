@@ -55,8 +55,8 @@ classdef unit
       Y = mex_conv3d(X,F,B, opts{:});
       fprintf('Y: [%d %d %d %d %d]\n', size5d(Y));
       % bprop
-%       dzdY = ones(size(Y), 'like', Y);
-      dzdY = ones(size(Y), 'single');
+      dzdY = rand(size(Y), 'like', Y);
+      %dzdY = ones(size(Y), 'like', Y);
       [dzdX,dzdF,dzdB] = mex_conv3d(X,F,B, dzdY, opts{:});
       
       % grad chk
@@ -69,15 +69,7 @@ classdef unit
       vl_testder(... dB
         @(arg) mex_conv3d(X,F,arg, opts{:}),...
         B, dzdY, dzdB, ran*ep);
-      
-%       tau = []; % auto tolerance
-%       verify_dtheta(@(X) mex_conv3d(X,F,B,'stride',stride, 'pad',pad),...
-%         X, dzdY, dzdX, ran*ep, tau, ob.ratio);
-%       verify_dtheta(@(F) mex_conv3d(X,F,B,'stride',stride, 'pad',pad),...
-%         F, dzdY, dzdF, ran*ep, tau, ob.ratio);
-%       verify_dtheta(@(B) mex_conv3d(X,F,B,'stride',stride, 'pad',pad),...
-%         B, dzdY, dzdB, ran*ep, tau, ob.ratio);
-     
+  
     end
 
   end % methods

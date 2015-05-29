@@ -1,5 +1,5 @@
 function tc_2(dg)
-desc = 'regular case, non-zero pad';
+desc = 'case 2, regular, non-zero pad';
 %%
 szX = [8, 8, 8, 5, 3];
 szF = [3, 2, 2, 5, 4];

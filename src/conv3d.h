@@ -38,8 +38,8 @@ protected:
 };
 
 
-//// release after mex unloaded (registered by )
-void conv3d_releaseAtMexExit ();
+//// release after mex unloaded (registered by mexAtExit)
+void conv3d_releaseWhenUnloadMex ();
 
 //// exception: error message carrier
 struct conv3d_ex : public std::exception {

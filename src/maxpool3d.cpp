@@ -112,7 +112,8 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
     dt = holder.X.getDevice();
 
     if ( ni < 1 || (holder.X.getElemType() != mxSINGLE_CLASS) ) 
-      throw mp3d_ex("For fprop(), there should be at least one input, X, of SINGLE type.");
+      throw mp3d_ex("For fprop(), there should be at least one input, X, of SINGLE type,"
+                    "be all gpuArray or be all mxArray.\n");
 
     holder.ct = maxpool3d::FPROP;
     opt_beg = 1;
@@ -125,7 +126,8 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
          holder.dY.getElemType()   != mxSINGLE_CLASS || 
          holder.ind.getElemType() != mxDOUBLE_CLASS) 
       throw mp3d_ex("For bprop(): there should be at least 2 arguments, X, ind.\n"
-      "The feature map X must be SINGLE, the max index ind must be double.");
+      "The feature map X must be SINGLE, the max index ind must be double,"
+      "they should be both gpuArray or be both mxArray.\n");
 
     holder.ct = maxpool3d::BPROP;
     opt_beg = 2;

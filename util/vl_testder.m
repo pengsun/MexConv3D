@@ -11,6 +11,7 @@ end
 
 dzdy = gather(dzdy) ;
 dzdx = gather(dzdx) ;
+delta = gather(delta) ;
 
 y = gather(g(x)) ;
 dzdx_=zeros(size(dzdx));

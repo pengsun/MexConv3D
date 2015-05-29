@@ -36,6 +36,7 @@ mex_src = {} ;
 mex_src{end+1} = fullfile('mex_conv3d.cpp');
 mex_src{end+1} = fullfile('mex_maxpool3d.cpp');
 
+
 %%% lib source
 lib_src = {} ; 
 % max pool3d
@@ -56,8 +57,7 @@ if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('wrapperBlas_gpu.cu') ;
 end
 lib_src{end+1} = fullfile('wrapperMx.cpp') ;
-lib_src = cellfun( @(x) fullfile('src',x),...
-  lib_src, 'UniformOutput',false);
+
 
 
 % --------------------------------------------------------------------
@@ -68,8 +68,10 @@ arch = computer('arch') ;
 if opts.enableGpu
   if isempty(opts.cudaRoot), opts.cudaRoot = search_cuda_devkit(opts); end
   check_nvcc(opts.cudaRoot);
-  opts.verbose && fprintf('%s:\tCUDA: using CUDA Devkit ''%s''.\n', ...
+  if opts.verbose 
+    fprintf('%s:\tCUDA: using CUDA Devkit ''%s''.\n', ...
                           mfilename, opts.cudaRoot) ;
+  end
   switch arch
     case 'win64', opts.cudaLibDir = fullfile(opts.cudaRoot, 'lib', 'x64') ;
     case 'maci64', opts.cudaLibDir = fullfile(opts.cudaRoot, 'lib') ;
@@ -80,9 +82,10 @@ if opts.enableGpu
 
   % CUDA arch string (select GPU architecture)
   if isempty(opts.cudaArch), opts.cudaArch = get_cuda_arch(opts) ; end
-  opts.verbose && fprintf('%s:\tCUDA: NVCC architecture string: ''%s''.\n', ...
-                          mfilename, opts.cudaArch) ;
-
+    if opts.verbose 
+      fprintf('%s:\tCUDA: NVCC architecture string: ''%s''.\n', ...
+         mfilename, opts.cudaArch) ;
+    end
   % Make sure NVCC is visible by MEX by setting the corresp. env. var
   if ~strcmp(getenv('MW_NVCC_PATH'), opts.nvccPath)
     warning('Setting the ''MW_NVCC_PATH'' environment variable to ''%s''', ...
@@ -96,18 +99,12 @@ end
 % --------------------------------------------------------------------
 
 % Build directories
-dir_this = fileparts( mfilename('fullpath') );
-mex_dir = dir_this ;
-bld_dir = dir_this ;
+mex_dir = '.' ;
+bld_dir = '.build' ;
 
 % Common compiler flags: cc
 flags.cc = {} ;
 if opts.verbose > 1, flags.cc{end+1} = '-v' ; end
-if opts.debug
-  flags.cc{end+1} = '-g' ;
-else
-  flags.cc{end+1} = '-DNDEBUG' ;
-end
 if opts.enableGpu
   flags.cc{end+1} = '-DWITH_GPUARRAY' ; 
 end
@@ -116,6 +113,13 @@ if opts.enableCudnn
   flags.cc{end+1} = ['-I' opts.cudnnRoot] ;
 end
 flags.cc{end+1} = '-I"./src"';
+if opts.debug
+  if ( ~strcmp(opts.cudaMethod,'nvcc') )
+    flags.cc{end+1} = '-g' ;
+  end
+else
+  flags.cc{end+1} = '-DNDEBUG' ;
+end
 
 % Linker flags
 flags.link = {} ;
@@ -164,14 +168,15 @@ end
 
 % For the cudaMethod='nvcc': nvcc
 if opts.enableGpu && strcmp(opts.cudaMethod,'nvcc')
-  flags.nvcc = flags.cc ;
+  flags.nvcc = flags.cc;
+  if opts.debug
+    flags.nvcc{end+1} = '-g -G';
+    flags.nvcc{end+1} = '-O0' ;
+  end
   flags.nvcc{end+1} = ['-I"' fullfile(matlabroot, 'extern', 'include') '"'] ;
   flags.nvcc{end+1} = ['-I"' fullfile(matlabroot, 'toolbox','distcomp','gpu','extern','include') '"'] ;
-  if opts.debug
-    flags.nvcc{end+1} = '-O0' ;
-    flags.nvcc{end+1} = '-G';
-  end
   flags.nvcc{end+1} = '-Xcompiler' ;
+
   switch arch
     case {'maci64', 'glnxa64'}
       flags.nvcc{end+1} = '-fPIC' ;
@@ -219,16 +224,20 @@ end
 %                                                              Compile
 % --------------------------------------------------------------------
 
+% convert all to absolute path
+mex_src = cellfun( @(x) fullfile(root,x),...
+  mex_src, 'UniformOutput',false);
+lib_src = cellfun( @(x) fullfile(root,'src',x),...
+  lib_src, 'UniformOutput',false);
+mex_dir = fullfile(root, mex_dir) ;
+bld_dir = fullfile(root, bld_dir) ;
+if (~exist(bld_dir,'dir')), mkdir(bld_dir); end
+
 % Intermediate object files
 srcs = horzcat(lib_src,mex_src) ;
 for i = 1 : numel( srcs )
-  [~,~,ext] = fileparts( srcs{i} ); 
-  if strcmp(ext,'.cu') 
-    if strcmp(opts.cudaMethod,'nvcc')
-      nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
-    else
-      mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcu) ;
-    end
+  if strcmp(opts.cudaMethod,'nvcc')
+    nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
   else
     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
   end
@@ -236,11 +245,15 @@ end
 
 % Link into MEX files
 for i = 1:numel(mex_src)
-  [~,base,~] = fileparts(mex_src{i}) ;
-  objs = toobj(bld_dir, {mex_src{i}, lib_src{:}}) ;
-  mex_link(opts, objs, mex_dir, flags.link) ;
+  objs{i} = toobj(bld_dir, [mex_src{i}, lib_src]) ;
+  mex_link(opts, objs{i}, mex_dir, flags.link) ;
 end
 
+% delete interdeidate files and directory
+if ( ~opts.debug )
+  cellfun( @(x) delobj(x), objs);
+  rmdir( bld_dir );
+end
 
 % --------------------------------------------------------------------
 %                                                    Utility functions
@@ -249,26 +262,41 @@ end
 % --------------------------------------------------------------------
 function objs = toobj(bld_dir,srcs)
 % --------------------------------------------------------------------
-objs = strrep(srcs,fullfile('matlab','src'),bld_dir) ;
-objs = strrep(objs,'.cpp',['.' objext]) ;
-objs = strrep(objs,'.cu',['.' objext]) ;
-objs = strrep(objs,'.c',['.' objext]) ;
+root = fileparts(mfilename('fullpath')) ;
+objs = strrep(srcs,fullfile(root,'src'),bld_dir) ;
+objs = strrep(objs,'.cpp',['.' objext()]) ;
+objs = strrep(objs,'.cu',['.' objext()]) ;
+objs = strrep(objs,'.c',['.' objext()]) ;
 
 % --------------------------------------------------------------------
-function objs = mex_compile(opts, src, tgt, mex_opts)
+function delobj(objfiles)
+% --------------------------------------------------------------------
+% suppress the warning
+for i = 1 : numel(objfiles)
+  if (~exist(objfiles{i},'file')), continue; end
+  delete( objfiles{i} );
+end
+%cellfun( @(x) delete(x), objfiles);
+
+% --------------------------------------------------------------------
+function mex_compile(opts, src, tgt, mex_opts)
 % --------------------------------------------------------------------
 mopts = {'-outdir', fileparts(tgt), src, '-c', mex_opts{:}} ;
-opts.verbose && fprintf('%s: MEX: %s\n', mfilename, strjoin(mopts)) ;
+if opts.verbose 
+  fprintf('%s: MEX: %s\n', mfilename, strjoin(mopts)) ;
+end
 mex(mopts{:}) ;
 
 % --------------------------------------------------------------------
-function obj = nvcc_compile(opts, src, tgt, nvcc_opts)
+function nvcc_compile(opts, src, tgt, nvcc_opts)
 % --------------------------------------------------------------------
 nvcc_path = fullfile(opts.cudaRoot, 'bin', 'nvcc');
 nvcc_cmd = sprintf('"%s" -c "%s" %s -o "%s"', ...
                    nvcc_path, src, ...
                    strjoin(nvcc_opts), tgt);
-opts.verbose && fprintf('%s: CUDA: %s\n', mfilename, nvcc_cmd) ;
+if opts.verbose 
+  fprintf('%s: CUDA: %s\n', mfilename, nvcc_cmd) ;
+end
 status = system(nvcc_cmd);
 if status, error('Command %s failed.', nvcc_cmd); end;
 
@@ -276,7 +304,9 @@ if status, error('Command %s failed.', nvcc_cmd); end;
 function mex_link(opts, objs, mex_dir, mex_flags)
 % --------------------------------------------------------------------
 mopts = {'-outdir', mex_dir, mex_flags{:}, objs{:}} ;
-opts.verbose && fprintf('%s: MEX linking: %s\n', mfilename, strjoin(mopts)) ;
+if opts.verbose 
+  fprintf('%s: MEX linking: %s\n', mfilename, strjoin(mopts)) ;
+end
 mex(mopts{:}) ;
 
 % --------------------------------------------------------------------

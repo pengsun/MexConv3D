@@ -2,6 +2,12 @@
 #include "src/conv3d.h"
 #include "src/wrapperMx.h"
 
+namespace {
+
+  void cleanup () {
+    conv3d_releaseWhenUnloadMex();
+  }
+}
 
 // "Y = MEX_CONV3D(X,F,B); forward pass"
 // "[dX,dF,dB] = MEX_CONV3D(X,F,B, dY); backward pass"
@@ -9,9 +15,9 @@
 void mexFunction(int no, mxArray       *vo[],
                  int ni, mxArray const *vi[])
 {
-  mexAtExit( conv3d_releaseAtMexExit );
+  mexAtExit( cleanup );
 
-#ifdef WITHCUDNN
+#ifdef WITH_CUDNN
   factory_c3d_withcudnn factory;
 #else
   factory_c3d_homebrew factory;
@@ -40,6 +46,6 @@ void mexFunction(int no, mxArray       *vo[],
   catch (const conv3d_ex& e) {
     safe_delete(h);
     mexErrMsgTxt( e.what() );
-  } 
+  }
 
 }

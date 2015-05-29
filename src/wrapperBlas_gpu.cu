@@ -14,7 +14,7 @@ public:
   }
 
   cublasHandle_t& get_cublasHandler () {
-
+    if (!isInit) init_cublas();
     return hd;
   }
 

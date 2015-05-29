@@ -1,8 +1,11 @@
 function run_all ()
 %% config
-% rng(6345, 'twister');
-type = 'cpu';
-% type = 'gpu';
+rng(81192, 'twister');
+
+% run_type('cpu');
+run_type('gpu');
+
+function run_type (type)
 %% test Conv3d
 if strcmp(type,'cpu')
   dg = @t_c3d.dg_cpu;
@@ -11,7 +14,7 @@ else
 end
 run_all_conv3d(dg);
 %% test MaxPool3d
-if strcmp(type,'gpu')
+if strcmp(type,'cpu')
   dg = @t_mp3d.dg_cpu;
 else
   dg = @t_mp3d.dg_gpu;

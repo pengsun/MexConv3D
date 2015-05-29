@@ -9,7 +9,7 @@ mwSize ceil_divide (mwSize a, mwSize b) {
 
 const int NUM_THD_DIM = 512; 
 
-//// kernel helper: setting initial value
+//// helper: setting initial value
 template<typename T>
 __global__ void kernelSetZero (T* beg, mwSize len) {
   mwSize ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -22,7 +22,7 @@ __global__ void kernelSetOne (T* beg, mwSize len) {
   if (ind < len) beg[ind] = static_cast<T>(1);
 }
 
-//// kernel impl: kernelCpyVolConvmat and its helpers
+//// Impl of copying data back and forth for Vol and Convmat
 typedef conv3d_blas_gpu::CpyVolConvmatImpl CpyImpl;
 
 __device__ mwSize get_convmat_h (CpyImpl &ip, mwSize indCM) {
@@ -76,10 +76,10 @@ __device__ void get_win_sub4 (CpyImpl &ip, mwSize w_convmat,  mwSize win_sub[4])
 __device__ int64_T get_indVol (CpyImpl &ip, int64_T win_offset[4], mwSize win_sub[4]) {
 
   // the global subscript and guaranteed valid range
-  mwSize vol_sub[4];
+  int64_T vol_sub[4];
   for (int i = 0; i < 4; ++i) {
-    if ( win_offset[i] < 0 ) return -1; // underflow
-    vol_sub[i] = win_offset[i] + win_sub[i];
+    vol_sub[i] = win_offset[i] + static_cast<int64_T>(win_sub[i]);
+    if ( vol_sub[i] < 0 ) return -1; // underflow
     if ( vol_sub[i] >= ip.vol_i.sz[i] ) return -1; // overflow
   }
 
@@ -96,7 +96,7 @@ const int DIR_VOL_FROM_CONVMAT = 1;
 template<int dir>
 void __global__ kernelCpyVolConvmat (CpyImpl ip) {
   mwSize indCM = blockDim.x * blockIdx.x + threadIdx.x;
-  if ( indCM > (ip.convmat.H*ip.convmat.W) ) return;
+  if ( indCM >= (ip.convmat.H*ip.convmat.W) ) return;
 
   // fill h, w
   mwSize h = get_convmat_h(ip, indCM); // convmat dim1
@@ -161,21 +161,28 @@ void conv3d_blas_gpu::fprop()
   init_convmat();
   init_u(); 
 
-  // iterate over each training instance
-  CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
-  mwSize N = X.getSizeAtDim(4);
-  for (mwSize i = 0; i < N; i++) {
-    // make phiX: the convolution matrix
-    vol_to_convmat(ip, X, i);
+  try {
+    // iterate over each training instance
+    CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
+    mwSize N = X.getSizeAtDim(4);
+    for (mwSize i = 0; i < N; i++) {
+      // make phiX: the convolution matrix
+      vol_to_convmat(ip, X, i);
 
-    // convolution: Y_ = phiX * F_
-    matw F_ = make_F_();
-    matw Y_ = make_Y_(i);
-    cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ TODO: the right cublas!
+      // convolution: Y_ = phiX * F_
+      matw F_ = make_F_();
+      matw Y_ = make_Y_(i);
+      cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
 
-    // plus the bias: Y_ += u * B
-    matw B_ = make_B_();
-    cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
+      // plus the bias: Y_ += u * B
+      matw B_ = make_B_();
+      cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
+    } // for i
+  } // try
+  catch (const blas_ex& e) {
+    free_u();
+    free_convmat();
+    throw conv3d_ex(e.what());
   }
 
   free_u();
@@ -191,28 +198,35 @@ void conv3d_blas_gpu::bprop()
   init_convmat();
   init_u();
 
-  // iterate over each instance
-  CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
-  matw dF_ = make_dF_();
-  matw dB_ = make_dB_();
-  mwSize N = X.getSizeAtDim(4);
-  for (mwSize i = 0; i < N; ++i) {
-    // make phiX: the convolution matrix
-    vol_to_convmat(ip, X, i);
+  try {
+    // iterate over each instance
+    CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
+    matw dF_ = make_dF_();
+    matw dB_ = make_dB_();
+    mwSize N = X.getSizeAtDim(4);
+    for (mwSize i = 0; i < N; ++i) {
+      // make phiX: the convolution matrix
+      vol_to_convmat(ip, X, i);
 
-    // dF += phiX' * dY_
-    matw dY_ = make_dY_(i);
-    cu_ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_ TODO: the right cublas
+      // dF += phiX' * dY_
+      matw dY_ = make_dY_(i);
+      cu_ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_ TODO: the right cublas
 
-    // dB += u' * dY
-    cu_ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
+      // dB += u' * dY
+      cu_ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
 
-    // dphiX = dY * F'
-    matw F_ = make_F_();
-    // safe to reuse convmat memory as X and dX have the same size; remember to overwrite it!
-    cu_AxBTtoC(dY_, F_, convmat, true);
-    // dX(:,:,:,:,i) <-- dphiX
-    vol_from_convmat(ip, dX, i);
+      // dphiX = dY * F'
+      matw F_ = make_F_();
+      // safe to reuse convmat memory as X and dX have the same size; remember to overwrite it!
+      cu_AxBTtoC(dY_, F_, convmat, true);
+      // dX(:,:,:,:,i) <-- dphiX
+      vol_from_convmat(ip, dX, i);
+    }
+  }
+  catch (const blas_ex& e) {
+    free_u();
+    free_convmat();
+    throw conv3d_ex(e.what());
   }
 
   free_u();

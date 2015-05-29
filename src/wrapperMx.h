@@ -79,6 +79,8 @@ mxArray* createVol5dZeros (mwSize sz[], xpuMxArrayTW::DEV_TYPE dt);
 
 mxArray* createVol5dLike (const xpuMxArrayTW &rhs, mxClassID tp = mxSINGLE_CLASS);
 
+mxArray* createVol5dZerosLike(const xpuMxArrayTW &rhs, mxClassID tp = mxSINGLE_CLASS);
+
 template<typename T> inline 
 T* getVolDataBeg(const xpuMxArrayTW &rhs, mwSize iVol = 0) {
   mwSize stride = rhs.getSizeAtDim(0) * rhs.getSizeAtDim(1) * rhs.getSizeAtDim(2);

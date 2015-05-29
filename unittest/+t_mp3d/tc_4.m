@@ -1,5 +1,5 @@
 function tc_4(dg)
-desc = 'regular case, pool > stride, non-zero pad';
+desc = 'case 4, regular, pool > stride, non-zero pad';
 %%
 sz     = [9, 3, 5, 7,6];
 pool   = [2, 3, 4];
