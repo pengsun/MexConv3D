@@ -1,16 +1,9 @@
-#include "mex.h"
-#include "wrapperMx.h"
+#include "cuda_runtime.h"
 #include "_maxpool3d_gpu.h"
+#include "_cu_helper.h"
 
 
 namespace {
-
-//// 
-const int   NUM_THDS = 512;
-
-mwSize ceil_divide (mwSize a, mwSize b) {
-  return (a + b - 1)/b;
-}
 
 //// thin wrappers 
 struct tw_array5d { 
@@ -193,7 +186,7 @@ void maxpool3d_gpu::fprop()
 
   // run
   mwSize nelem = numel(Y);
-  kernel_fprop<<<ceil_divide(nelem, NUM_THDS), NUM_THDS>>>( impl );
+  kernel_fprop<<<ceil_divide(nelem, CU_NUM_THREADS), CU_NUM_THREADS>>>( impl );
 }
 
 void maxpool3d_gpu::bprop()
@@ -217,6 +210,6 @@ void maxpool3d_gpu::bprop()
 
 
   // run
-  kernel_bprop <<<ceil_divide(impl.dY.sz, NUM_THDS), NUM_THDS>>>( impl );
+  kernel_bprop <<<ceil_divide(impl.dY.sz, CU_NUM_THREADS), CU_NUM_THREADS>>>( impl );
 }
 

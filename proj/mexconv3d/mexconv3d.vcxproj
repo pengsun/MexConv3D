@@ -85,6 +85,7 @@
     <ClInclude Include="..\..\src\_conv3d_blas_cpu.h" />
     <ClInclude Include="..\..\src\_conv3d_blas_gpu.h" />
     <ClInclude Include="..\..\src\_conv3d_cpu.h" />
+    <ClInclude Include="..\..\src\_cu_helper.h" />
     <ClInclude Include="..\..\src\_maxpool3d_cpu.h" />
     <ClInclude Include="..\..\src\_maxpool3d_gpu.h" />
     <ClInclude Include="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\builtin_types.h" />

@@ -1,14 +1,11 @@
 #include "cuda_runtime.h"
 #include "_conv3d_blas_gpu.h"
+#include "_cu_helper.h"
 #include "logmsg.h"
 
 namespace {
 //// helpers for threads
-mwSize ceil_divide (mwSize a, mwSize b) {
-  return (a + b - 1)/b;
-}
 
-const int NUM_THD_DIM = 512; 
 
 //// helper: setting initial value
 template<typename T>
@@ -337,7 +334,7 @@ void conv3d_blas_gpu::init_convmat()
   convmat.beg = (float*)tmp;
 
   // assures all zeros
-  kernelSetZero<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(convmat.beg, nelem);
+  kernelSetZero<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(convmat.beg, nelem);
   
   LOGMSG("conv3d_blas_gpu::init_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
@@ -355,8 +352,8 @@ void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, 
 
   // do the real job
   mwSize nelem = ip.convmat.H * ip.convmat.W;
-  dim3 blkSize( ceil_divide(nelem, NUM_THD_DIM) );
-  dim3 thdSize( NUM_THD_DIM );
+  dim3 blkSize( ceil_divide(nelem, CU_NUM_THREADS) );
+  dim3 thdSize( CU_NUM_THREADS );
   kernelCpyVolConvmat<DIR_VOL_TO_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
 
@@ -367,8 +364,8 @@ void conv3d_blas_gpu::vol_from_convmat(CpyVolConvmatImpl &ip, xpuMxArrayTW &vol,
 
   // do the real job
   mwSize nelem = ip.convmat.H * ip.convmat.W;
-  dim3 blkSize( ceil_divide(nelem, NUM_THD_DIM) );
-  dim3 thdSize( NUM_THD_DIM );
+  dim3 blkSize( ceil_divide(nelem, CU_NUM_THREADS) );
+  dim3 thdSize( CU_NUM_THREADS );
   kernelCpyVolConvmat<DIR_VOL_FROM_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
 
@@ -391,7 +388,7 @@ void conv3d_blas_gpu::init_u()
   u.beg = (float*) tmp;
 
   // make sure all one
-  kernelSetOne<float><<<ceil_divide(nelem,NUM_THD_DIM), NUM_THD_DIM>>>(u.beg, nelem);
+  kernelSetOne<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(u.beg, nelem);
 
   LOGMSG("conv3d_blas_gpu::init_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
