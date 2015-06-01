@@ -51,7 +51,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>VB; WITH_GPUARRAY; WITH_OPENMP; WIN32;_DEBUG;_WINDOWS;_USRDLL;MEXCONV3D_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TM; VB; WITH_GPUARRAY; WITH_OPENMP; WIN32;_DEBUG;_WINDOWS;_USRDLL;MEXCONV3D_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\src;D:\WorkStudy\MATLAB\R2014a\extern\include;D:\WorkStudy\MATLAB\R2014a\toolbox\distcomp\gpu\extern\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

@@ -4,6 +4,9 @@
 #include "wrapperBlas.h"
 #include "_conv3d_blas_gpu.h"
 #endif // WITH_GPUARRAY
+#ifdef TM
+#include "Timer.h"
+#endif // TM
 
 
 
@@ -30,6 +33,11 @@ conv3d::~conv3d()
 //// Impl of helpers
 void conv3d::create_Y()
 {
+//#ifdef TM
+//  Timer tm;
+//  tm.start();
+//#endif // TM
+
   // check input X and filter F, B
   if ( F.getSizeAtDim(3) != X.getSizeAtDim(3) )  // 
     throw conv3d_ex("#feature maps of F and X should match: size(F,4)==size(X,4).");
@@ -54,6 +62,12 @@ void conv3d::create_Y()
 
   // create Y
   Y.setMxArray( createVol5d(szY, X.getDevice()) );
+
+//#ifdef TM
+//  tm.stop();
+//  double te = tm.getElapsedTimeInMilliSec();
+//  mexPrintf("conv3d::create_Y: %f\n", te);
+//#endif // TM
 }
 
 void conv3d::check_X_size()

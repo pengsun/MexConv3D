@@ -2,6 +2,10 @@
 #include "_conv3d_blas_gpu.h"
 #include "_cu_helper.h"
 #include "logmsg.h"
+#ifdef TM
+#include "Timer.h"
+#include <cublas_v2.h>
+#endif // TM
 
 namespace {
 //// helpers for threads
@@ -157,35 +161,280 @@ void conv3d_blas_gpu::fprop()
 {
   create_Y();
   init_convmat();
-  init_u(); 
+
+#ifdef TM
+  Timer tm;
+#endif // TM
 
   try {
     // iterate over each training instance
     CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
     mwSize N = X.getSizeAtDim(4);
+
+#ifdef TM
+    mexPrintf("num inst = %d \n", N);
+    tm.start();
+#endif
+
     for (mwSize i = 0; i < N; i++) {
+
       // make phiX: the convolution matrix
       vol_to_convmat(ip, X, i);
+      
 
-      // convolution: Y_ = phiX * F_
-      matw F_ = make_F_();
-      matw Y_ = make_Y_(i);
-      cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
-
-      // plus the bias: Y_ += u * B
-      matw B_ = make_B_();
-      cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
     } // for i
   } // try
   catch (const blas_ex& e) {
-    free_u();
     free_convmat();
     throw conv3d_ex(e.what());
   }
 
-  free_u();
+#ifdef TM
+  cudaThreadSynchronize();
+
+  tm.stop();
+  double te = tm.getElapsedTimeInMilliSec();
+
+  mexPrintf("conv3d_blas_gpu::vol_to_convmat: %f\n", te);
+#endif // TM
+
   free_convmat();
+  //free_u();
+
+#ifdef TM
+  mexPrintf("\n");
+#endif // TM
 }
+
+//void conv3d_blas_gpu::fprop()
+//{
+//  create_Y();
+//  init_convmat();
+//  init_u(); 
+//
+//#ifdef TM
+//  Timer tm;
+//  tm.start();
+//
+//  Timer tmtm;
+//  double t1 = 0.0, t2 = 0.0, t3 = 0.0;
+//  mwSize H1,W1, H2,W2;
+//  mwSize H3,W3, H4,W4;
+//#endif // TM
+//
+//  try {
+//    // iterate over each training instance
+//    CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
+//    mwSize N = X.getSizeAtDim(4);
+//
+//#ifdef TM
+//    mexPrintf("num inst = %d \n", N);
+//#endif
+//
+//    for (mwSize i = 0; i < N; i++) {
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      // make phiX: the convolution matrix
+//      vol_to_convmat(ip, X, i);
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t1 += tmtm.getElapsedTimeInMilliSec();
+//#endif // TM
+//
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      // convolution: Y_ = phiX * F_
+//      matw F_ = make_F_();
+//      matw Y_ = make_Y_(i);
+//      //cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t2 += tmtm.getElapsedTimeInMilliSec();
+//      H1 = convmat.H; W1 = convmat.W;
+//      H2 = F_.H; W2 = F_.W;
+//#endif // TM
+//
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      // plus the bias: Y_ += u * B
+//      matw B_ = make_B_();
+//      //cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t3 += tmtm.getElapsedTimeInMilliSec();
+//      H3 =  u.H; W3 = u.W;
+//      H4 = B_.H; W4 = B_.W;
+//#endif // TM
+//    } // for i
+//  } // try
+//  catch (const blas_ex& e) {
+//    free_u();
+//    free_convmat();
+//    throw conv3d_ex(e.what());
+//  }
+//
+//#ifdef TM
+//  tm.stop();
+//  double te = tm.getElapsedTimeInMilliSec();
+//
+//  mexPrintf("conv3d_blas_gpu::vol_to_convmat: %f\n", t1);
+//
+//  mexPrintf("conv3d_blas_gpu::mut 1: %f\n", t2);
+//  mexPrintf("[%d %d] x [%d %d]\n", H1,W1, H2,W2);
+//
+//  mexPrintf("conv3d_blas_gpu::mut 2: %f\n", t3);
+//  mexPrintf("[%d %d] x [%d %d]\n",H3,W3, H4,W4);
+//
+//  mexPrintf("conv3d_blas_gpu::fprop: %f\n", te);
+//#endif // TM
+//
+//  //free_convmat();
+//  //free_u();
+//  
+//#ifdef TM
+//  mexPrintf("\n");
+//#endif // TM
+//}
+
+//void conv3d_blas_gpu::fprop()
+//{
+//  create_Y();
+//  init_convmat();
+//  init_u(); 
+//
+//#ifdef TM
+//  Timer tm;
+//  tm.start();
+//
+//  Timer tmtm;
+//  double t1 = 0.0, t2 = 0.0, t3 = 0.0;
+//  mwSize H1,W1, H2,W2;
+//  mwSize H3,W3, H4,W4;
+//
+//  cublasHandle_t hd;
+//  cublasStatus_t st;
+//  cublasCreate(&hd);
+//
+//#endif // TM
+//
+//  try {
+//    // iterate over each training instance
+//    CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
+//    mwSize N = X.getSizeAtDim(4);
+//
+//#ifdef TM
+//    mexPrintf("num inst = %d \n", N);
+//#endif
+//
+//    for (mwSize i = 0; i < N; i++) {
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      // make phiX: the convolution matrix
+//      //vol_to_convmat(ip, X, i);
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t1 += tmtm.getElapsedTimeInMilliSec();
+//#endif // TM
+//
+//
+//      // convolution: Y_ = phiX * F_
+//      matw F_ = make_F_();
+//      matw Y_ = make_Y_(i);
+//
+//      float alpha = 1.0;
+//      float beta = 0.0;
+//
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      st = cublasSgemm(
+//        hd,
+//        CUBLAS_OP_N, CUBLAS_OP_N,
+//        (int)convmat.H, (int)F_.W, (int)convmat.W,
+//        &alpha,
+//        (float*)convmat.beg, (int)convmat.H,
+//        (float*)F_.beg, (int)F_.H,
+//        &beta,
+//        (float*)Y_.beg, (int)Y_.H);
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t2 += tmtm.getElapsedTimeInMilliSec();
+//      H1 = convmat.H; W1 = convmat.W;
+//      H2 = F_.H; W2 = F_.W;
+//#endif // TM
+//
+//
+//      // plus the bias: Y_ += u * B
+//      matw B_ = make_B_();
+//      
+//#ifdef TM
+//      tmtm.start();
+//#endif // TM
+//
+//      alpha = 1.0;
+//      beta  = 1.0;
+//      st = cublasSgemm(
+//        hd,
+//        CUBLAS_OP_N, CUBLAS_OP_N,
+//        (int)u.H, (int)B_.W, (int)u.W,
+//        &alpha,
+//        (float*)u.beg, (int)u.H,
+//        (float*)B_.beg, (int)B_.H,
+//        &beta,
+//        (float*)Y_.beg, (int)Y_.H);
+//
+//#ifdef TM
+//      tmtm.stop();
+//      t3 += tmtm.getElapsedTimeInMilliSec();
+//      H3 =  u.H; W3 = u.W;
+//      H4 = B_.H; W4 = B_.W;
+//#endif // TM
+//    } // for i
+//  } // try
+//  catch (const blas_ex& e) {
+//    free_u();
+//    free_convmat();
+//    throw conv3d_ex(e.what());
+//  }
+//
+//#ifdef TM
+//  cublasDestroy(hd);
+//  tm.stop();
+//  double te = tm.getElapsedTimeInMilliSec();
+//
+//  mexPrintf("conv3d_blas_gpu::vol_to_convmat: %f\n", t1);
+//
+//  mexPrintf("conv3d_blas_gpu::mut 1: %f\n", t2);
+//  mexPrintf("[%d %d] x [%d %d]\n", H1,W1, H2,W2);
+//
+//  mexPrintf("conv3d_blas_gpu::mut 2: %f\n", t3);
+//  mexPrintf("[%d %d] x [%d %d]\n",H3,W3, H4,W4);
+//
+//  mexPrintf("conv3d_blas_gpu::fprop: %f\n", te);
+//#endif // TM
+//
+//  free_convmat();
+//  free_u();
+//
+//#ifdef TM
+//  mexPrintf("\n");
+//#endif // TM
+//
+//}
 
 void conv3d_blas_gpu::bprop()
 {
@@ -317,6 +566,11 @@ conv3d_blas_gpu::CpyVolConvmatImpl conv3d_blas_gpu::make_initial_CpyVolConvmatIm
 
 void conv3d_blas_gpu::init_convmat()
 {
+#ifdef TM
+  Timer tm;
+  tm.start();
+#endif // TM
+
   // set the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0) // in FPROP, Y has been set
@@ -336,12 +590,30 @@ void conv3d_blas_gpu::init_convmat()
   // assures all zeros
   kernelSetZero<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(convmat.beg, nelem);
   
+#ifdef TM
+  tm.stop();
+  double te = tm.getElapsedTimeInMilliSec();
+  mexPrintf("conv3d_blas_gpu::init_convmat: %f\n", te);
+#endif // TM
+
   LOGMSG("conv3d_blas_gpu::init_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
 
 void conv3d_blas_gpu::free_convmat()
 {
+//#ifdef TM
+//  Timer tm;
+//  tm.start();
+//#endif // TM
+
   cudaFree( (void*)convmat.beg );
+
+//#ifdef TM
+//  tm.stop();
+//  double te = tm.getElapsedTimeInMilliSec();
+//  mexPrintf("conv3d_blas_gpu::free_convmat: %f\n", te);
+//#endif // TM
+
   LOGMSG("conv3d_blas_gpu::free_convmat()\n");
 }
 
@@ -371,6 +643,11 @@ void conv3d_blas_gpu::vol_from_convmat(CpyVolConvmatImpl &ip, xpuMxArrayTW &vol,
 
 void conv3d_blas_gpu::init_u()
 {
+#ifdef TM
+  Timer tm;
+  tm.start();
+#endif // TM
+
   // decide the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
   if (Y.pa_cpu != 0)
@@ -391,11 +668,28 @@ void conv3d_blas_gpu::init_u()
   kernelSetOne<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(u.beg, nelem);
 
   LOGMSG("conv3d_blas_gpu::init_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
+
+#ifdef TM
+  tm.stop();
+  double te = tm.getElapsedTimeInMilliSec();
+  mexPrintf("onv3d_blas_gpu::init_u: %f\n", te);
+#endif // TM
 }
 
 void conv3d_blas_gpu::free_u()
 {
+#ifdef TM
+  Timer tm;
+  tm.start();
+#endif // TM
+
   cudaFree( (void*)u.beg );
+
+#ifdef TM
+  tm.stop();
+  double te = tm.getElapsedTimeInMilliSec();
+  mexPrintf("conv3d_blas_gpu::free_u: %f\n", te);
+#endif // TM
 
   LOGMSG("conv3d_blas_gpu::free_u()\n");
 }

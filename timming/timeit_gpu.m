@@ -1,20 +1,20 @@
 function timeit_gpu()
-N = 612;
-aa = 28;
+N = 1000;
+aa = 36;
 bb = 5;
 szX = [aa,aa,1, 20, N];
 szF = [bb, bb, 1, 20, 16];
 szB = [1,16];
-pad = [1,1, 1,1, 0,0];
+pad = [0,0, 0,0, 0,0];
 stride = [1, 1, 1];
 X = gpuArray.randn(szX, 'single');
 F = gpuArray.randn(szF, 'single');
 B = gpuArray.randn(szB, 'single');
-T = 10;
+T = 1;
 
-te2 = time_conv2d();
 te1 = time_conv3d();
-
+fprintf('\n');
+te2 = time_conv2d();
 
 fprintf('conv3d: %5.4f\n', te1/T);
 fprintf('vl: %5.4f\n', te2/T);
