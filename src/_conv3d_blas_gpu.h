@@ -13,7 +13,7 @@ struct conv3d_blas_gpu : public conv3d {
   // helper types for implementation
   struct vol4d {
     float* beg;
-    mwSize sz[4];
+    int sz[4];
   };
 
   struct CpyVolConvmatImpl {
@@ -21,10 +21,10 @@ struct conv3d_blas_gpu : public conv3d {
     vol4d vol_i; // X(:,:,:,:,i) or dX(:,:,:,:,i)
     matw  convmat;
     // other information
-    mwSize szY[3];
-    mwSize szF[3];
-    mwSize stride[3];
-    mwSize pad[6];
+    int szY[3];
+    int szF[3];
+    int stride[3];
+    int pad[6];
   };
 
 private:

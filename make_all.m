@@ -19,7 +19,7 @@ function make_all()
 opts.enableGpu        = true;
 opts.enableOpenmp     = true;
 opts.verbose          = 1;
-opts.debug            = true;
+opts.debug            = false;
 opts.printLog         = false;
 opts.tm               = true;
 opts.cudaRoot         = [] ;
