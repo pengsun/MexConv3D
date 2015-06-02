@@ -285,3 +285,24 @@ nnconv_forward_blas<GPU,float>: 64.229935
 conv3d: 2.4810
 vl: 0.0648
 conv3d/vl: 38.3092
+
+
+--------------------------------------
+After threads along Y size and P, full
+--------------------------------------
+
+>> timeit_c3d_fprop_gpu
+
+conv3d: 0.0716
+vl: 0.0420
+conv3d/vl: 1.7070
+>> timeit_c3d_fprop_gpu
+
+conv3d: 0.0712
+vl: 0.0420
+conv3d/vl: 1.6969
+>> timeit_c3d_fprop_gpu
+
+conv3d: 0.0708
+vl: 0.0423
+conv3d/vl: 1.6754
