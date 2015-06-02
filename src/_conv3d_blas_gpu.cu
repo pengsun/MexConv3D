@@ -26,108 +26,90 @@ namespace {
   //// Impl of copying data back and forth for Vol and Convmat
   typedef conv3d_blas_gpu::CpyVolConvmatImpl CpyImpl;
 
-  __device__ int get_convmat_h (CpyImpl &ip, int indCM) {
-    return (indCM % (int)ip.convmat.H);
-  }
-
-  __device__ int get_convmat_w (CpyImpl &ip, int indCM) {
-    return (indCM / (int)ip.convmat.H);
-  }
-
-  __device__ void get_subY (CpyImpl &ip, int ind,  int subY[3]) {
-    int HW = ip.szY[0] * ip.szY[1];
-    int H  = ip.szY[0];
-
-    subY[2] = ind / HW;
-    ind %= HW;
-
-    subY[1] = ind / H;
-    ind %= H;
-
-    subY[0] = ind;
-  }
-
-  __device__ void get_win_offset4 (CpyImpl &ip, int h_covnmat,  int win_offset[3]) {
-    int subY[3];
-    get_subY(ip, h_covnmat, subY);
-
-    for (int i = 0; i < 3; ++i) 
-      win_offset[i] = (subY[i] * ip.stride[i]) - (ip.pad[2*i]);
-    win_offset[3] = 0;
-  }
-
-  __device__ void get_win_sub4 (CpyImpl &ip, int w_convmat,  int win_sub[4]) {
-    int H   = ip.szF[0]; 
-    int HW  = H * ip.szF[1];
-    int HWD = HW * ip.szF[2];
-
-    win_sub[3] = w_convmat / HWD;
-    w_convmat %= HWD;
-
-    win_sub[2] = w_convmat / HW;
-    w_convmat %= HW;
-
-    win_sub[1] = w_convmat / H;
-    w_convmat %= H;
-
-    win_sub[0] = w_convmat;
-  }
-
-  // return -1 if out of range (either underflow or overflow)
-  __device__ int get_indVol (CpyImpl &ip, int win_offset[4], int win_sub[4]) {
-
-    // the global subscript and guaranteed valid range
-    int vol_sub[4];
-    for (int i = 0; i < 4; ++i) {
-      vol_sub[i] = win_offset[i] + win_sub[i];
-      if ( vol_sub[i] < 0 ) return -1; // underflow
-      if ( vol_sub[i] >= ip.vol_i.sz[i] ) return -1; // overflow
-    }
-
-    int H   = ip.vol_i.sz[0];
-    int HW  = H * ip.vol_i.sz[1];
-    int HWD = HW * ip.vol_i.sz[2];
-
-    return (HWD*vol_sub[3] + HW*vol_sub[2] + H*vol_sub[1] + vol_sub[0]);
-  }
 
   const int DIR_VOL_TO_CONVMAT   = 0; // nvcc does not support enum instantiation?
   const int DIR_VOL_FROM_CONVMAT = 1;
 
+  __device__ void get_subY (CpyImpl &ip, int ind, int subY[3]) {
+    subY[2] = ind / ip.Y.szProd[1];
+    ind %= ip.Y.szProd[1];
+
+    subY[1] = ind / ip.Y.szProd[0];
+    ind %= ip.Y.szProd[0];
+
+    subY[0] = ind;
+  }
+
+  __device__ void get_win_offset3 (CpyImpl &ip, int h_covnmat,  int win_offset[3]) {
+     int subY[3];
+     get_subY(ip, h_covnmat, subY);
+
+     win_offset[0] = subY[0]*ip.stride[0] - ip.pad[0];
+     win_offset[1] = subY[1]*ip.stride[1] - ip.pad[2];
+     win_offset[2] = subY[2]*ip.stride[2] - ip.pad[4];
+  }
+
+  __device__ void offset_to_sub (int offset[3], int i, int j, int k,  int sub[3]) {
+    sub[0] = offset[0] + i;
+    sub[1] = offset[1] + j;
+    sub[2] = offset[2] + k;
+  }
+
+  __device__ bool is_in_range (CpyImpl &ip, int vol_sub[3]) {
+    return ( vol_sub[0] >= 0  &&  vol_sub[0] < ip.X.sz[0]  &&
+             vol_sub[1] >= 0  &&  vol_sub[1] < ip.X.sz[1]  &&
+             vol_sub[2] >= 0  &&  vol_sub[2] < ip.X.sz[2] );
+  }
+
   template<int dir>
   void __global__ kernelCpyVolConvmat (CpyImpl ip) {
-    int indCM = blockDim.x * blockIdx.x + threadIdx.x;
-    if ( indCM >= (int)(ip.convmat.H*ip.convmat.W) ) return;
+    int ind = blockDim.x * blockIdx.x + threadIdx.x;
 
-    // fill h, w
-    int h = get_convmat_h(ip, indCM); // convmat dim1
-    int w = get_convmat_w(ip, indCM); // convmat dim2
+    if (ind < ip.YP) {
+      
+      // get filter window offset on volume
+      int win_offset[3];
+      int h_convmat = ind % ip.Y.szProd[2];
+      get_win_offset3(ip, h_convmat,  win_offset);
 
-    // h (convmat dim1) -> window's offset (starting point) on volume (win_offset[3] = 0 as volume dim4 all in!)
-    int win_offset[4]; // fill win_offset
-    get_win_offset4(ip, h, win_offset);
+      // get the beginning of 3D volume: vol4d(:,:,:, p)
+      int p = ind / ip.Y.szProd[2];
+      float* vol3d_beg = ip.vol4d_beg + p * ip.X.szProd[2];
 
-    // w (convmat dim2) -> win_sub ( r,s,t,u the subscript within the window )
-    int win_sub[4]; // (r, s, t, u) 
-    get_win_sub4(ip, w, win_sub);
+      // get the pointer to convmat  
+      float* p_convmat = ip.convmat_beg + (p * ip.Y.szProd[2] * ip.F.szProd[2]) + h_convmat; 
 
-    // win_offset[4] and win_sub[4] -> linear index, ind, on volume
-    int indVol = get_indVol(ip, win_offset, win_sub);
+      // scan the sub volume (size F) and copy data
+      for (int k = 0; k < ip.F.sz[2]; ++k) {
+        for (int j = 0; j < ip.F.sz[1]; ++j) {
+          for (int i = 0; i < ip.F.sz[0]; ++i) {
+            int vol3d_subscript[3];
+            offset_to_sub(win_offset, i,j,k, vol3d_subscript);
 
-    // copy the data at indCM, indVol
-    if (indVol < 0) {
-      if (dir == DIR_VOL_TO_CONVMAT) 
-        ip.convmat.beg[indCM] = 0.0; // pad zeros!
-      //else: DIR_VOL_FROM_CONVMAT, do nothing
-      return;
-    }
+            if ( is_in_range (ip, vol3d_subscript) ) { // in range
+              // get pointer to vol3d
+              float *p_vol3d = vol3d_beg + vol3d_subscript[0] + 
+                                           vol3d_subscript[1]*ip.X.szProd[0] + 
+                                           vol3d_subscript[2]*ip.X.szProd[1]; 
 
-    if (dir == DIR_VOL_TO_CONVMAT) // vol -> convmat
-      ip.convmat.beg[indCM] = ip.vol_i.beg[indVol];
-    else { // DIR_VOL_FROM_CONVMAT, vol <- convmat
-      // ATOMIC increment: ip.vol_i.beg[indVol] += ip.convmat.beg[indCM]
-      atomicAdd( (ip.vol_i.beg + indVol), ip.convmat.beg[indCM]);
-    }
+              if (dir == DIR_VOL_TO_CONVMAT)
+                *p_convmat = *p_vol3d;
+              else
+                atomicAdd(p_vol3d, *p_convmat); // *p_vol3d += p_convmat
+            } 
+            else { // out of range
+              if (dir == DIR_VOL_TO_CONVMAT)
+                *p_convmat = 0.0;
+              // else: do nothing
+            }
+
+            // advance to next convmat element
+            p_convmat += ip.Y.szProd[2];
+          } // for i
+        } // for j
+      } // for k
+
+    } // if (ind < ip.YP)
   }
 
 } // namespace
@@ -178,11 +160,11 @@ void conv3d_blas_gpu::fprop()
       // convolution: Y_ = phiX * F_
       matw F_ = make_F_();
       matw Y_ = make_Y_(i);
-      //cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
+      cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
 
       // plus the bias: Y_ += u * B
       matw B_ = make_B_();
-      //cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
+      cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
     } // for i
   } // try
   catch (const blas_ex& e) {
@@ -197,7 +179,7 @@ void conv3d_blas_gpu::fprop()
   tm.stop();
   double te = tm.getElapsedTimeInMilliSec();
 
-  mexPrintf("conv3d_blas_gpu::vol_to_convmat: %f\n", te);
+  mexPrintf("conv3d_blas_gpu::fprop: %f\n", te);
 #endif // TM
 
   free_u();
@@ -315,17 +297,22 @@ conv3d_blas_gpu::CpyVolConvmatImpl conv3d_blas_gpu::make_initial_CpyVolConvmatIm
 {
   CpyVolConvmatImpl ip;
 
-  ip.vol_i.beg = 0; // to be set later
-  for (int i = 0; i < 4; ++i) ip.vol_i.sz[i] = (int)vol.getSizeAtDim(i);
+  // Source, Target data
+  ip.vol4d_beg = 0; // set later
+  ip.convmat_beg = convmat.beg;
 
-  ip.convmat = this->convmat;
+  // volume size for X(or dX), F, Y (or dY)
+  ip.X.set_sz(vol);
+  ip.F.set_sz(F);
+  ip.Y.set_sz( (Y.pa_cpu != 0) ? (Y) : (dY) );
+  
+  // index and max size for input feature map
+  ip.P = vol.getSizeAtDim(3);
 
-  if ( Y.pa_cpu != 0)
-    for (int i = 0; i < 3; ++i) ip.szY[i] = (int)this->Y.getSizeAtDim(i);
-  else // dY.pa_cpu != 0
-    for (int i = 0; i < 3; ++i) ip.szY[i] = (int)this->dY.getSizeAtDim(i);
+  // pre-computation: should always be Y.szProd[2]*P
+  ip.YP = ip.Y.szProd[2] * ip.P;
 
-  for (int i = 0; i < 3; ++i) ip.szF[i] = (int)this->F.getSizeAtDim(i);
+  // other information
   for (int i = 0; i < 3; ++i) ip.stride[i] = (int)this->stride[i];
   for (int i = 0; i < 6; i++) ip.pad[i] = (int)this->pad[i];
 
@@ -365,11 +352,10 @@ void conv3d_blas_gpu::free_convmat()
 void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
   // set vol(:,:,:,:, i)
-  ip.vol_i.beg = getVolInstDataBeg<float>(vol, iInst);
+  ip.vol4d_beg = getVolInstDataBeg<float>(vol, iInst);
 
   // do the real job
-  mwSize nelem = ip.convmat.H * ip.convmat.W;
-  dim3 blkSize( ceil_divide(nelem, CU_NUM_THREADS) );
+  dim3 blkSize( ceil_divide(ip.YP, CU_NUM_THREADS) );
   dim3 thdSize( CU_NUM_THREADS );
   kernelCpyVolConvmat<DIR_VOL_TO_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
@@ -377,11 +363,10 @@ void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, 
 void conv3d_blas_gpu::vol_from_convmat(CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
   // set vol(:,:,:,:, i)
-  ip.vol_i.beg = getVolInstDataBeg<float>(vol, iInst);
+  ip.vol4d_beg = getVolInstDataBeg<float>(vol, iInst);
 
   // do the real job
-  mwSize nelem = ip.convmat.H * ip.convmat.W;
-  dim3 blkSize( ceil_divide(nelem, CU_NUM_THREADS) );
+  dim3 blkSize( ceil_divide(ip.YP, CU_NUM_THREADS) );
   dim3 thdSize( CU_NUM_THREADS );
   kernelCpyVolConvmat<DIR_VOL_FROM_CONVMAT><<<blkSize, thdSize>>>(ip);
 }

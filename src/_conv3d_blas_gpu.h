@@ -11,18 +11,33 @@ struct conv3d_blas_gpu : public conv3d {
   void bprop ();
 
   // helper types for implementation
-  struct vol4d {
-    float* beg;
-    int sz[4];
+  struct vol {
+    int sz[3];
+    int szProd[3];
+
+    void set_sz (const xpuMxArrayTW &rhs) {
+      for (int i = 0; i < 3; ++i) sz[i] = rhs.getSizeAtDim(i);
+      set_szProd();
+    }
+
+  private:
+    void set_szProd () {
+      szProd[0] = sz[0];
+      szProd[1] = szProd[0] * sz[1];
+      szProd[2] = szProd[1] * sz[2];
+    }
   };
 
   struct CpyVolConvmatImpl {
-    // Source, Target
-    vol4d vol_i; // X(:,:,:,:,i) or dX(:,:,:,:,i)
-    matw  convmat;
+    // Source, Target data
+    float *vol4d_beg, *convmat_beg;
+    // volume size for X(or dX), F, Y (or dY)
+    vol X, F, Y;
+    // #input feature map
+    int P;
+    // pre-computation: should always be Y.szProd[2]*P
+    int YP;
     // other information
-    int szY[3];
-    int szF[3];
     int stride[3];
     int pad[6];
   };
