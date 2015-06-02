@@ -1,5 +1,5 @@
-function timeit_gpu()
-N = 1000;
+function timeit_c3d_bprop_gpu()
+N = 256;
 aa = 36;
 bb = 5;
 szX = [aa,aa,1, 20, N];
@@ -16,18 +16,19 @@ te1 = time_conv3d();
 fprintf('\n');
 te2 = time_conv2d();
 
-fprintf('conv3d: %5.4f\n', te1/T);
-fprintf('vl: %5.4f\n', te2/T);
+fprintf('conv3d bprop: %5.4f\n', te1/T);
+fprintf('vl bprop: %5.4f\n', te2/T);
 fprintf('conv3d/vl: %6.4f\n', te1/te2);
 
 function te = time_conv3d()
-  Y1 = mex_conv3d(X,F,B,...
+  Y = mex_conv3d(X,F,B,...
   'pad', pad,...
   'stride', stride);
+  dY = rand(size(Y), 'like',Y);
 
   te = tic;
   for t = 1 : T
-    Y1 = mex_conv3d(X,F,B,...
+    [dX,dF,dB] = mex_conv3d(X,F,B,dY,...
       'pad', pad,...
       'stride', stride);
   end
@@ -40,21 +41,18 @@ function te = time_conv2d()
   pad2d = pad(1:4);
   stride2d = stride(1:2);
   
-  Y1 = vl_nnconv(XX, FF, B,...
-  'pad', pad2d,...
-  'stride', stride2d);
+  Y = vl_nnconv(XX, FF, B,...
+    'pad', pad2d,...
+    'stride', stride2d);
+  dY = rand(size(Y), 'like',Y);
 
   te = tic;
   for t = 1 : T
-    Y1 = vl_nnconv(XX, FF, B,...
+    [dX,dF,dB] = vl_nnconv(XX, FF, B, dY, ...
       'pad', pad2d,...
       'stride', stride2d);
   end
   te = toc(te);
 end
 
-
-
-
 end
-
