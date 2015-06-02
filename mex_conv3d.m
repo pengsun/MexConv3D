@@ -1,7 +1,7 @@
 %MEX_CONV3D Volume convolution for 3D convnet
-% Y = mex_conv3d(X, F, B); forward pass
-% [dZdX, dZdF, dZdB] = mex_conv3d(X, F, B dZdY); backward pass
-% mex_conv3d(..., 'stride', s, 'pad', p); the options
+% Y = MEX_CONV3D(X, F, B); forward pass
+% [dZdX, dZdF, dZdB] = MEX_CONV3D(X, F, B dZdY); backward pass
+% [...] =MEX_CONV3D(..., 'stride', s, 'pad', p); the options
 %
 % Input:
 %   X: [H,W,D,P,N]. Input volume or feature maps. H, W, D are volume's 

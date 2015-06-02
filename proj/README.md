@@ -1,3 +1,3 @@
-Just for viewing the source files in IDE. 
+Just for debugging and viewing the source files in IDE. 
 
-Don't build the project with this, build using the `make_all.m` in root directory.
+Don't build the project with this, use the `make_all.m` in root directory instead!

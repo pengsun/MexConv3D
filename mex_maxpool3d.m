@@ -1,7 +1,7 @@
 %MEX_MAXPOOL3D Volume max pooling for 3D convnet
 %  [Y,ind] = MEX_MAXPOOL3D(X); forward pass
 %  dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
-%  MEX_MAXPOOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
+%  [...] = MEX_MAXPOOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
 %
 %  Input:
 %   X: [H,W,D,M,N]. Volume at input port or feature maps. H, W, D are volume's 
@@ -19,6 +19,7 @@
 %
 %  Output:
 %   Y: [Ho,Wo,Do,M,N]. Feature maps at output port
-%   ind: [Ho,Wo,Do,M,N]. Linear index of the max elements to X: Y = X(ind)
+%   ind: [Ho,Wo,Do,M,N]. Linear index of the max elements to X so that 
+%        Y = X(ind)
 %   dZdX: [H,W,D,M,N]. Delta signal at input port. Z means loss.  
 %
