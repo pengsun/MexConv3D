@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "_maxpool3d_gpu.h"
-#include "_cu_helper.h"
+#include "_cu_helper.cuh"
 
 
 namespace {

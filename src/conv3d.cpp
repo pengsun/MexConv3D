@@ -75,19 +75,19 @@ void conv3d::check_X_size()
 {
   // TODO: code refactoring. duplicate code with create_Y()
 
-  //// size Y: the right size taking pad and stride into account
-  //mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
-  //mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
-  //mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
-  //mwSize MY = F.getSizeAtDim(4);
-  //mwSize NY = X.getSizeAtDim(4);
+  // size Y: the right size taking pad and stride into account
+  mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
+  mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
+  mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
+  mwSize MY = F.getSizeAtDim(4);
+  mwSize NY = X.getSizeAtDim(4);
 
-  //if (HY != dY.getSizeAtDim(0) ||
-  //  WY != dY.getSizeAtDim(1) || 
-  //  DY != dY.getSizeAtDim(2) ||
-  //  MY != dY.getSizeAtDim(3) ||
-  //  NY != dY.getSizeAtDim(4) )
-  //  throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
+  if (HY != dY.getSizeAtDim(0) ||
+    WY != dY.getSizeAtDim(1) || 
+    DY != dY.getSizeAtDim(2) ||
+    MY != dY.getSizeAtDim(3) ||
+    NY != dY.getSizeAtDim(4) )
+    throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
 }
 
 void conv3d::create_dX()

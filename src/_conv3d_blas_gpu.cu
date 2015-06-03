@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "_conv3d_blas_gpu.h"
-#include "_cu_helper.h"
+#include "_cu_helper.cuh"
 #include "logmsg.h"
 #ifdef TM
 #include "Timer.h"
