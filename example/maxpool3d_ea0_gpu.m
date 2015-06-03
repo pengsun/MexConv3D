@@ -1,5 +1,5 @@
 %% data
-sz = [128,128,128, 5,9];
+sz = [8,8,8, 5,9];
 x = gpuArray.rand(sz, 'single');
 %% fprop
 [y, ind] = mex_maxpool3d(x);

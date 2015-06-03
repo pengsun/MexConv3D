@@ -15,11 +15,12 @@
 %   height, width and depth, respectively. P is the size for all. Default 
 %   to P = 2.
 %   s: [sH,sW,sD] or [s]. Default to s = 2
-%   pad: [PH,PW,PD] or [P]. Padding size
+%   pad: [PH,PW,PD] or [P]. Padding size. Default to P = 0
 %
 %  Output:
 %   Y: [Ho,Wo,Do,M,N]. Feature maps at output port
 %   ind: [Ho,Wo,Do,M,N]. Linear index of the max elements to X so that 
-%        Y = X(ind)
+%        Y = X(ind). ind must be int32 so that X cannot be too large, or
+%        there would be undefined behaviour.
 %   dZdX: [H,W,D,M,N]. Delta signal at input port. Z means loss.  
 %

@@ -10,6 +10,7 @@
 
 inline size_t sizeofMxType (mxClassID t) {
   if (t == mxSINGLE_CLASS) return 4;
+  if (t == mxINT32_CLASS)  return 4;
   if (t == mxDOUBLE_CLASS) return 8;
 
   return 0; // TODO: more types if necessary

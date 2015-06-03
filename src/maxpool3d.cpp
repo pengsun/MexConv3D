@@ -67,13 +67,13 @@ void maxpool3d::create_Y()
 
 void maxpool3d::create_ind()
 {
-  ind.setMxArray( createVol5dLike(Y, mxDOUBLE_CLASS) );
+  ind.setMxArray( createVol5dLike(Y, mxINT32_CLASS) );
 }
 
 void maxpool3d::create_dX()
 {
   // check ind & dY
-  if ( ind.getElemType()!=mxDOUBLE_CLASS || dY.getElemType()!=mxSINGLE_CLASS ) 
+  if ( ind.getElemType()!=mxINT32_CLASS || dY.getElemType()!=mxSINGLE_CLASS ) 
     throw mp3d_ex("In bprop(): dY must be SINGLE, ind must be double.");
 
   //
@@ -128,10 +128,10 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
     dt = holder.dY.getDevice();
 
     if ( ni < 2 || 
-         holder.dY.getElemType()   != mxSINGLE_CLASS || 
-         holder.ind.getElemType() != mxDOUBLE_CLASS) 
+         holder.dY.getElemType()  != mxSINGLE_CLASS || 
+         holder.ind.getElemType() != mxINT32_CLASS) 
       throw mp3d_ex("For bprop(): there should be at least 2 arguments, X, ind.\n"
-      "The feature map X must be SINGLE, the max index ind must be double,"
+      "The feature map X must be SINGLE, the max index ind must be int32,"
       "they should be both gpuArray or be both mxArray.\n");
 
     holder.ct = maxpool3d::BPROP;

@@ -8,41 +8,41 @@ namespace {
 //// thin wrappers 
 struct tw_array5d { 
   float *beg;
-  mwSize sz[5];
-  mwSize HW, HWD;
-  mwSize nelem;
+  int sz[5];
+  int HW, HWD;
+  int nelem;
 };
 
 template<typename T>
 struct tw_vec {
   T* beg;
-  mwSize sz;
+  int sz;
 };
 
 struct fprop_impl {
-  tw_array5d     X, Y;
-  tw_vec<double> ind;
+  tw_array5d  X, Y;
+  tw_vec<int> ind;
  
-  mwSize pool[3];
-  mwSize stride[3];
-  mwSize pad[6];
+  int pool[3];
+  int stride[3];
+  int pad[6];
 };
 
 struct bprop_impl
 {
   tw_vec<float>  dX, dY;
-  tw_vec<double> ind;
+  tw_vec<int> ind;
 };
 
 //// kernel Impl
 __device__ const float VERY_NEGATIVE_NUM = -1e20;
 
-__device__ void ind2sub (mwSize iElem, mwSize sz[5], 
-                         mwSize &h, mwSize &w, mwSize &d, mwSize &iVol) 
+__device__ void ind2sub (int iElem, int sz[5], 
+                         int &h, int &w, int &d, int &iVol) 
 {
-  mwSize H   = sz[0];
-  mwSize HW  = H * sz[1];
-  mwSize HWD = HW * sz[2];
+  int H   = sz[0];
+  int HW  = H * sz[1];
+  int HWD = HW * sz[2];
 
   iVol = iElem / HWD;
   iElem = iElem % HWD;
@@ -56,29 +56,26 @@ __device__ void ind2sub (mwSize iElem, mwSize sz[5],
 }
 
 __global__ void kernel_fprop (fprop_impl impl) {
-  mwSize iElem = blockIdx.x * blockDim.x + threadIdx.x;
+  int iElem = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (iElem >= impl.Y.nelem) return;
 
   // subscript on Y
-  mwSize iY, jY, kY, iVol;
+  int iY, jY, kY, iVol;
   ind2sub(iElem, impl.Y.sz,  iY,jY,kY,iVol);
 
   // init value for current Y
-  float  vmax = VERY_NEGATIVE_NUM;
-  double imax = -43.0;
+  float vmax = VERY_NEGATIVE_NUM;
+  int   imax = -43.0;
 
   // set the window on X for current Y element (iElem); note the offset can be negative
-  mwSize xH   = impl.X.sz[0];
-  mwSize xHW  = impl.X.HW;
-  mwSize xHWD = impl.X.HWD;
-  int64_T xwin_offset[3];
-  xwin_offset[0] = -static_cast<int64_T>( impl.pad[0]) + 
-                    static_cast<int64_T>( iY * impl.stride[0] ); 
-  xwin_offset[1] = -static_cast<int64_T>( impl.pad[2]) + 
-                    static_cast<int64_T>( jY * impl.stride[1] );
-  xwin_offset[2] = -static_cast<int64_T>( impl.pad[4] ) + 
-                    static_cast<int64_T>( kY * impl.stride[2] );
+  int xH   = impl.X.sz[0];
+  int xHW  = impl.X.HW;
+  int xHWD = impl.X.HWD;
+  int xwin_offset[3];
+  xwin_offset[0] = -(impl.pad[0]) + ( iY * impl.stride[0] ); 
+  xwin_offset[1] = -(impl.pad[2]) + ( jY * impl.stride[1] );
+  xwin_offset[2] = -(impl.pad[4]) + ( kY * impl.stride[2] );
   const float* const xwin_beg = impl.X.beg + 
                                 xwin_offset[0] + 
                                 xwin_offset[1]*xH + 
@@ -86,16 +83,16 @@ __global__ void kernel_fprop (fprop_impl impl) {
                                 iVol*xHWD;
 
   // inspect the window at X, get the max value
-  for (int64_T t = 0; t < impl.pool[2]; ++t) {     // X window dim3: depth
-    int64_T xt = t + xwin_offset[2];
+  for (int t = 0; t < impl.pool[2]; ++t) {     // X window dim3: depth
+    int xt = t + xwin_offset[2];
     bool xtInRange = (xt>=0) && (xt<impl.X.sz[2]);
 
-    for (int64_T s = 0; s < impl.pool[1]; ++s) {   // X window dim2: width
-      int64_T xs = s + xwin_offset[1];
+    for (int s = 0; s < impl.pool[1]; ++s) {   // X window dim2: width
+      int xs = s + xwin_offset[1];
       bool xsInRange = (xs>=0) && (xs<impl.X.sz[1]);
 
-      for (int64_T r = 0; r < impl.pool[0]; ++r) { // X window dim1: height
-        int64_T xr = r + xwin_offset[0];
+      for (int r = 0; r < impl.pool[0]; ++r) { // X window dim1: height
+        int xr = r + xwin_offset[0];
         bool xrInRange = (xr>=0) && (xr<impl.X.sz[0]);
 
         // if out of range: never collect the element
@@ -119,11 +116,11 @@ __global__ void kernel_fprop (fprop_impl impl) {
 }
 
 __global__ void kernel_bprop (bprop_impl impl) {
-  mwSize iY = blockIdx.x * blockDim.x + threadIdx.x;
+  int iY = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (iY >= impl.dY.sz) return;
 
-  mwSize ix = mwSize( impl.ind.beg[iY] );
+  int ix = int( impl.ind.beg[iY] );
   ix -= 1;
 
   // atomic Increment: there can be overlapping ix!
@@ -180,12 +177,12 @@ void maxpool3d_gpu::fprop()
   impl.Y.HWD   = impl.Y.HW * impl.Y.sz[2];
   impl.Y.nelem = numel(Y);
   // output: ind, device pointer
-  impl.ind.beg = (double *) ind.getDataBeg();
+  impl.ind.beg = (int*) ind.getDataBeg();
   impl.ind.sz  = numel(ind);
 
 
   // run
-  mwSize nelem = numel(Y);
+  int nelem = numel(Y);
   kernel_fprop<<<ceil_divide(nelem, CU_NUM_THREADS), CU_NUM_THREADS>>>( impl );
 }
 
@@ -205,7 +202,7 @@ void maxpool3d_gpu::bprop()
   impl.dY.beg = (float*) dY.getDataBeg();
   impl.dY.sz  = numel(dY);
   //
-  impl.ind.beg = (double*) ind.getDataBeg();
+  impl.ind.beg = (int*) ind.getDataBeg();
   impl.ind.sz  = numel(ind);
 
 
