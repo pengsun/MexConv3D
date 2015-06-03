@@ -7,12 +7,12 @@ run_type('gpu');
 
 function run_type (type)
 %% test Conv3d
-% if strcmp(type,'cpu')
-%   dg = @t_c3d.dg_cpu;
-% else
-%   dg = @t_c3d.dg_gpu;
-% end
-% run_all_conv3d(dg);
+if strcmp(type,'cpu')
+  dg = @t_c3d.dg_cpu;
+else
+  dg = @t_c3d.dg_gpu;
+end
+run_all_conv3d(dg);
 %% test MaxPool3d
 if strcmp(type,'cpu')
   dg = @t_mp3d.dg_cpu;
