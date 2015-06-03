@@ -6,7 +6,7 @@ pool = [2, 2, 1];
 pad = [0,0, 0,0, 0,0];
 stride = [1, 1, 1];
 X = gpuArray.randn(szX, 'single');
-T = 2;
+T = 5;
 
 te1 = time_mp3d();
 fprintf('\n');

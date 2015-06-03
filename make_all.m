@@ -61,7 +61,7 @@ end
 lib_src{end+1} = fullfile('Timer.cpp') ;
 lib_src{end+1} = fullfile('wrapperBlas_cpu.cpp') ;
 if opts.enableGpu % GPU-specific files
-  lib_src{end+1} = fullfile('wrapperBlas_gpu.cu') ;
+  lib_src{end+1} = fullfile('wrapperBlas_gpu.cpp') ;
 end
 lib_src{end+1} = fullfile('wrapperMx.cpp') ;
 
