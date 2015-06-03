@@ -169,20 +169,20 @@ void maxpool3d_gpu::fprop()
   for (int i = 0; i < 5; ++i) impl.X.sz[i] = X.getSizeAtDim(i);
   impl.X.HW    = impl.X.sz[0] * impl.X.sz[1];
   impl.X.HWD   = impl.X.HW * impl.X.sz[2];
-  impl.X.nelem = numel(X);
+  impl.X.nelem = static_cast<int>( numel(X) );
   // output: Y, device pointer
   impl.Y.beg = (float*) Y.getDataBeg();
   for (int i = 0; i < 5; ++i) impl.Y.sz[i] = Y.getSizeAtDim(i);
   impl.Y.HW    = impl.Y.sz[0] * impl.Y.sz[1];
   impl.Y.HWD   = impl.Y.HW * impl.Y.sz[2];
-  impl.Y.nelem = numel(Y);
+  impl.Y.nelem = static_cast<int>( numel(Y) );
   // output: ind, device pointer
   impl.ind.beg = (int*) ind.getDataBeg();
-  impl.ind.sz  = numel(ind);
+  impl.ind.sz  = static_cast<int>( numel(ind) );
 
 
   // run
-  int nelem = numel(Y);
+  int nelem = static_cast<int>( numel(Y) );
   kernel_fprop<<<ceil_divide(nelem, CU_NUM_THREADS), CU_NUM_THREADS>>>( impl );
 }
 
@@ -197,13 +197,13 @@ void maxpool3d_gpu::bprop()
   bprop_impl impl;
   //
   impl.dX.beg = (float*) dX.getDataBeg();
-  impl.dX.sz  = numel(dX);
+  impl.dX.sz  = static_cast<int>( numel(dX) );
   //
   impl.dY.beg = (float*) dY.getDataBeg();
-  impl.dY.sz  = numel(dY);
+  impl.dY.sz  = static_cast<int>( numel(dY) );
   //
   impl.ind.beg = (int*) ind.getDataBeg();
-  impl.ind.sz  = numel(ind);
+  impl.ind.sz  = static_cast<int>( numel(ind) );
 
 
   // run

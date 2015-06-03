@@ -35,49 +35,48 @@ void maxpool3d_cpu::fprop()
   create_ind();
 
   // input X size
-  mwSize xH = X.getSizeAtDim(0), xW = X.getSizeAtDim(1), xD = X.getSizeAtDim(2);
-  mwSize xHW  = xH*xW;
-  mwSize xHWD = xH*xW*xD;
+  int xH = X.getSizeAtDim(0), xW = X.getSizeAtDim(1), xD = X.getSizeAtDim(2);
+  int xHW  = xH*xW;
+  int xHWD = xH*xW*xD;
 
   // iterate over Y, record the max value and index
   #pragma omp parallel for
-  for (int64_T n = 0; n < numVol(Y); ++n) { // Y dim4, dim5...: along each volume
+  for (int n = 0; n < numVol(Y); ++n) { // Y dim4, dim5...: along each volume
 
-    float*  yy = getVolDataBeg<float>(Y, n);    // output data
-    double* ii = getVolDataBeg<double>(ind, n); // output index
+    float* yy = getVolDataBeg<float>(Y, n);    // output data
+    int*   ii = getVolDataBeg<int>(ind, n); // output index
 
     const float* const xx_beg = getVolDataBeg<float>(X, n); // input data (never change it)
 
-
-    for (mwSize k = 0; k < Y.getSizeAtDim(2); ++k) {     // Y dim3: along depth
-      for (mwSize j = 0; j < Y.getSizeAtDim(1); ++j) {   // Y dim2: along width
-        for (mwSize i = 0; i < Y.getSizeAtDim(0); ++i) { // Y dim1: along height
+    for (int k = 0; k < Y.getSizeAtDim(2); ++k) {     // Y dim3: along depth
+      for (int j = 0; j < Y.getSizeAtDim(1); ++j) {   // Y dim2: along width
+        for (int i = 0; i < Y.getSizeAtDim(0); ++i) { // Y dim1: along height
 
           // init value for current Y
-          float  vmax = VERY_NEGATIVE_NUM;
-          double imax = -43.0;
+          float vmax = VERY_NEGATIVE_NUM;
+          int   imax = -43.0;
 
           // set the window on X for current Y element (yy): the offset can be negative
-          int64_T xwin_offset[3];
-          xwin_offset[0] = -static_cast<int64_T>(pad[0]) + static_cast<int64_T>( i*stride[0] ); 
-          xwin_offset[1] = -static_cast<int64_T>(pad[2]) + static_cast<int64_T>( j*stride[1] );
-          xwin_offset[2] = -static_cast<int64_T>(pad[4]) + static_cast<int64_T>( k*stride[2] );
+          int xwin_offset[3];
+          xwin_offset[0] = -static_cast<int>(pad[0]) + static_cast<int>( i*stride[0] ); 
+          xwin_offset[1] = -static_cast<int>(pad[2]) + static_cast<int>( j*stride[1] );
+          xwin_offset[2] = -static_cast<int>(pad[4]) + static_cast<int>( k*stride[2] );
           const float* const xwin_beg = xx_beg + 
                                         xwin_offset[0] + 
                                         xwin_offset[1]*xH + 
                                         xwin_offset[2]*xHW;
 
           // inspect the window at X, get the max value
-          for (int64_T t = 0; t < pool[2]; ++t) {     // X window dim3: depth
-            int64_T xt = t + xwin_offset[2];
+          for (int t = 0; t < pool[2]; ++t) {     // X window dim3: depth
+            int xt = t + xwin_offset[2];
             bool xtInRange = (xt>=0) && (xt<xD);
 
-            for (int64_T s = 0; s < pool[1]; ++s) {   // X window dim2: width
-              int64_T xs = s + xwin_offset[1];
+            for (int s = 0; s < pool[1]; ++s) {   // X window dim2: width
+              int xs = s + xwin_offset[1];
               bool xsInRange = (xs>=0) && (xs<xW);
 
-              for (int64_T r = 0; r < pool[0]; ++r) { // X window dim1: height
-                int64_T xr = r + xwin_offset[0];
+              for (int r = 0; r < pool[0]; ++r) { // X window dim1: height
+                int xr = r + xwin_offset[0];
                 bool xrInRange = (xr>=0) && (xr<xH);
 
                 // if out of range: never collect the element
@@ -116,14 +115,14 @@ void maxpool3d_cpu::bprop()
   float* const dxx = (float*)dX.getDataBeg();
   // dY and index at output port
   float* const dyy = (float*)dY.getDataBeg();
-  double* const ii = (double*)ind.getDataBeg();
+  int*   const ii  = (int*)ind.getDataBeg();
 
   // iterate over dY, set dX
-  mwSize num = numel(dY);
+  int num = static_cast<int>( numel(dY) );
   
   #pragma omp parallel for
-  for (int64_T n = 0; n < num; ++n) {
-    mwSize ix = mwSize( ii[n] );
+  for (int n = 0; n < num; ++n) {
+    int ix = ii[n];
     ix -= 1; // matlab 1-base -> C++ 0-base
 
     // accumulate! there can be overlapping ix!
