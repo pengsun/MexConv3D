@@ -10,3 +10,5 @@
 *.sln
 *.suo
 *.opensdf
+*.psess
+*.vspx

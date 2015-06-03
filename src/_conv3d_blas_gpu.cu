@@ -7,25 +7,8 @@
 #endif // TM
 
 namespace {
-  //// helpers for threads
-
-
-  //// helper: setting initial value
-  template<typename T>
-  __global__ void kernelSetZero (T* beg, mwSize len) {
-    mwSize ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < len) beg[ind] = static_cast<T>(0);
-  }
-
-  template<typename T>
-  __global__ void kernelSetOne (T* beg, mwSize len) {
-    mwSize ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < len) beg[ind] = static_cast<T>(1);
-  }
-
   //// Impl of copying data back and forth for Vol and Convmat
   typedef conv3d_blas_gpu::CpyVolConvmatImpl CpyImpl;
-
 
   const int DIR_VOL_TO_CONVMAT   = 0; // nvcc does not support enum instantiation?
   const int DIR_VOL_FROM_CONVMAT = 1;
@@ -152,18 +135,18 @@ void conv3d_blas_gpu::fprop()
   try {
     // iterate over each training instance
     CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
+    matw F_ = make_F_();
+    matw B_ = make_B_();
     mwSize N = X.getSizeAtDim(4);
     for (mwSize i = 0; i < N; i++) {
       // make phiX: the convolution matrix
       vol_to_convmat(ip, X, i);
 
       // convolution: Y_ = phiX * F_
-      matw F_ = make_F_();
       matw Y_ = make_Y_(i);
       cu_AxBtoC(convmat, F_, Y_, true); // overwrite Y_ 
 
       // plus the bias: Y_ += u * B
-      matw B_ = make_B_();
       cu_AxBtoC(u, B_, Y_, false); // accumulation on Y_
     } // for i
   } // try
@@ -199,6 +182,7 @@ void conv3d_blas_gpu::bprop()
     // iterate over each instance
     CpyVolConvmatImpl ip = make_initial_CpyVolConvmatImpl( X );
     matw dF_ = make_dF_();
+    matw F_  = make_F_();
     matw dB_ = make_dB_();
     mwSize N = X.getSizeAtDim(4);
     for (mwSize i = 0; i < N; ++i) {
@@ -207,14 +191,13 @@ void conv3d_blas_gpu::bprop()
 
       // dF += phiX' * dY_
       matw dY_ = make_dY_(i);
-      cu_ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_ TODO: the right cublas
+      cu_ATxBtoC(convmat, dY_, dF_, false); // accumulation on dF_ 
 
       // dB += u' * dY
       cu_ATxBtoC(u, dY_, dB_, false); // accumulation on dB_
 
       // dphiX = dY * F'
-      matw F_ = make_F_();
-      // safe to reuse convmat memory as X and dX have the same size; remember to overwrite it!
+      // safe to reuse convmat memory since X and dX have the same size; remember to overwrite it!
       cu_AxBTtoC(dY_, F_, convmat, true);
       // dX(:,:,:,:,i) <-- dphiX
       vol_from_convmat(ip, dX, i);

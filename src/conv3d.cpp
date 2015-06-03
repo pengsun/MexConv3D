@@ -3,6 +3,7 @@
 #ifdef WITH_GPUARRAY
 #include "wrapperBlas.h"
 #include "_conv3d_blas_gpu.h"
+#include "_conv3d_blas_gpu_fc.h"
 #endif // WITH_GPUARRAY
 #ifdef TM
 #include "Timer.h"
@@ -74,19 +75,19 @@ void conv3d::check_X_size()
 {
   // TODO: code refactoring. duplicate code with create_Y()
 
-  // size Y: the right size taking pad and stride into account
-  mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
-  mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
-  mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
-  mwSize MY = F.getSizeAtDim(4);
-  mwSize NY = X.getSizeAtDim(4);
+  //// size Y: the right size taking pad and stride into account
+  //mwSize HY = (pad[0]+X.getSizeAtDim(0)+pad[1] - F.getSizeAtDim(0))/stride[0] + 1;
+  //mwSize WY = (pad[2]+X.getSizeAtDim(1)+pad[3] - F.getSizeAtDim(1))/stride[1] + 1;
+  //mwSize DY = (pad[4]+X.getSizeAtDim(2)+pad[5] - F.getSizeAtDim(2))/stride[2] + 1;
+  //mwSize MY = F.getSizeAtDim(4);
+  //mwSize NY = X.getSizeAtDim(4);
 
-  if (HY != dY.getSizeAtDim(0) ||
-    WY != dY.getSizeAtDim(1) || 
-    DY != dY.getSizeAtDim(2) ||
-    MY != dY.getSizeAtDim(3) ||
-    NY != dY.getSizeAtDim(4) )
-    throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
+  //if (HY != dY.getSizeAtDim(0) ||
+  //  WY != dY.getSizeAtDim(1) || 
+  //  DY != dY.getSizeAtDim(2) ||
+  //  MY != dY.getSizeAtDim(3) ||
+  //  NY != dY.getSizeAtDim(4) )
+  //  throw conv3d_ex("In bprop(): size(dzdY) is inconsistent with X and F.");
 }
 
 void conv3d::create_dX()
@@ -170,9 +171,15 @@ conv3d* factory_c3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni, mx
 
   set_options(holder, n_opt, ni, vi);
 
+  bool is_fc = is_fullconnection(holder);
+
 #ifdef WITH_GPUARRAY
-  if ( xpuMxArrayTW::GPU == holder.X.getDevice() )
+  if ( xpuMxArrayTW::GPU == holder.X.getDevice() ) {
+    if (is_fc) return new conv3d_blas_gpu_fc(holder);
+    // default:
     return new conv3d_blas_gpu(holder);
+  }
+    
 #endif // WITH_GPUARRAY
 
   return new conv3d_blas_cpu(holder);
@@ -219,4 +226,14 @@ void factory_c3d_homebrew::check_type(const conv3d &holder)
 
   if (!flag) 
     throw conv3d_ex("In bprop(), X, F, B, dZdY must be all gpuArray or mxArray.\n");
+}
+
+bool factory_c3d_homebrew::is_fullconnection(const conv3d &holder)
+{
+  return ( holder.X.getSizeAtDim(0) == holder.F.getSizeAtDim(0)  &&
+           holder.X.getSizeAtDim(1) == holder.F.getSizeAtDim(1)  && 
+           holder.X.getSizeAtDim(2) == holder.F.getSizeAtDim(2)  &&
+           holder.pad[0]==0 && holder.pad[1]==0 &&
+           holder.pad[2]==0 && holder.pad[3]==0 &&
+           holder.pad[4]==0 && holder.pad[5]==0 );
 }

@@ -55,6 +55,7 @@ lib_src{end+1} = fullfile('conv3d.cpp') ;
 lib_src{end+1} = fullfile('_conv3d_blas_cpu.cpp') ;
 if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('_conv3d_blas_gpu.cu') ;
+  lib_src{end+1} = fullfile('_conv3d_blas_gpu_fc.cu') ;
 end
 % common
 lib_src{end+1} = fullfile('Timer.cpp') ;
@@ -250,27 +251,27 @@ if (~exist(bld_dir,'dir')), mkdir(bld_dir); end
 srcs = horzcat(lib_src,mex_src) ;
 %%% compiling all with nvcc is slow but is necessary when 
 %%% debugging cuda code 
-% for i = 1 : numel( srcs )
-%   if strcmp(opts.cudaMethod,'nvcc')
-%     nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
-%   else
-%     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
-%   end
-% end
-
-%%% this code compiles faster, but cannot debug the cuda code 
 for i = 1 : numel( srcs )
-  [~,~,ext] = fileparts(srcs{i});
-  if strcmp(ext, '.cu') 
-    if strcmp(opts.cudaMethod,'nvcc')
-      nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
-    else
-      mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
-    end
+  if strcmp(opts.cudaMethod,'nvcc')
+    nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
   else
     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
   end
 end
+
+%%% this code compiles faster, but cannot debug the cuda code 
+% for i = 1 : numel( srcs )
+%   [~,~,ext] = fileparts(srcs{i});
+%   if strcmp(ext, '.cu') 
+%     if strcmp(opts.cudaMethod,'nvcc')
+%       nvcc_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.nvcc) ;
+%     else
+%       mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
+%     end
+%   else
+%     mex_compile(opts, srcs{i}, toobj(bld_dir,srcs{i}), flags.mexcc) ;
+%   end
+% end
 
 
 % Link into MEX files

@@ -1,5 +1,5 @@
 function timeit_c3d_fprop_gpu()
-N = 256;
+N = 128;
 aa = 36;
 bb = 5;
 szX = [aa,aa,1, 20, N];
@@ -10,7 +10,7 @@ stride = [1, 1, 1];
 X = gpuArray.randn(szX, 'single');
 F = gpuArray.randn(szF, 'single');
 B = gpuArray.randn(szB, 'single');
-T = 1;
+T = 3;
 
 te1 = time_conv3d();
 fprintf('\n');

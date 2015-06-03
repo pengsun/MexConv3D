@@ -7,8 +7,8 @@ struct conv3d_blas_gpu : public conv3d {
   conv3d_blas_gpu ();
   conv3d_blas_gpu (const conv3d& rhs);
 
-  void fprop ();
-  void bprop ();
+  virtual void fprop ();
+  virtual void bprop ();
 
   // helper types for implementation
   struct vol {
@@ -42,7 +42,7 @@ struct conv3d_blas_gpu : public conv3d {
     int pad[6];
   };
 
-private:
+protected:
   // helper: fprop
   matw make_F_ ();
   matw make_Y_ (mwSize i);
@@ -53,7 +53,7 @@ private:
   matw make_dF_ ();
   matw make_dB_ ();
 
-private: // helper: the stacked matrix storing phiX or dphiX
+protected: // helper: the stacked matrix storing phiX or dphiX
   CpyVolConvmatImpl make_initial_CpyVolConvmatImpl (const xpuMxArrayTW &vol);
 
   void init_convmat ();
@@ -62,7 +62,7 @@ private: // helper: the stacked matrix storing phiX or dphiX
   void vol_from_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst); // row2im
   matw convmat;
 
-private: // helper for unit vector u
+protected: // helper for unit vector u
   void init_u ();
   void free_u ();
   matw u;

@@ -1,7 +1,7 @@
-function timeit_c3d_bprop_gpu()
+function timeit_c3d_fc_bprop_gpu()
 N = 128;
 aa = 36;
-bb = 5;
+bb = aa;
 szX = [aa,aa,1, 20, N];
 szF = [bb, bb, 1, 20, 16];
 szB = [1,16];
@@ -10,11 +10,13 @@ stride = [1, 1, 1];
 X = gpuArray.randn(szX, 'single');
 F = gpuArray.randn(szF, 'single');
 B = gpuArray.randn(szB, 'single');
-T = 3;
+T = 5;
 
-te1 = time_conv3d();
-fprintf('\n');
 te2 = time_conv2d();
+fprintf('\n');
+te1 = time_conv3d();
+
+
 
 fprintf('conv3d bprop: %5.4f\n', te1/T);
 fprintf('vl bprop: %5.4f\n', te2/T);

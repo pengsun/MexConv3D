@@ -1,6 +1,17 @@
 function tc_5(dg)
 desc = 'case 5, full connection';
 %%
+szX = [2, 2, 2, 1, 1];
+szF = [2, 2, 2, 1, 1];
+szB = [1, 1];
+stride = [2,3,4];
+pad = [0,0, 0,0, 0,0];
+
+h = dg(szX,szF,szB, stride, pad, desc);
+
+hu = t_c3d.unit(h);
+hu.run();
+%%
 szX = [3, 3, 3, 4, 3];
 szF = [3, 3, 3, 4, 2];
 szB = [1, 2];

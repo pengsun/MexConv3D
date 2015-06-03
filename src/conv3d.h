@@ -57,7 +57,8 @@ struct factory_c3d_homebrew : public factory_c3d {
   virtual conv3d* parse_and_create (int no, mxArray *vo[], int ni, mxArray const *vi[]);
 
 protected:
-  void check_type (const conv3d &holder);
+  void check_type        (const conv3d &holder);
+  bool is_fullconnection (const conv3d &holder);
 
   void set_options (conv3d &holder, int n_opt, int ni, mxArray const *vi[]);
   void set_stride  (conv3d &holder, mxArray const *pa);

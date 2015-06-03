@@ -1,5 +1,6 @@
 As is the case of 2d convnet, the `im2row` (and `row2im`) trick is used to convert convolution to plain matrix multiplication. 5 dimensional array shows up: for input `x` or output `y`, dim1 to dim3 are height, width, depth; dim4 is #input/#output channels; dim5 is #instances. For filter bank `f`, dim4 is #input-feature-maps, dim4 is #output-feature-maps.
 
+## General Case
 ### FPROP
 Given the input `x`, filter `f`, bias `B`:
 ``` 
@@ -54,9 +55,7 @@ for i = 1 : N
 end
 ```
 
-### A (Concrete) Example
-
-
+## A (Concrete) Example
 ### FPROP
 Input:
 ``` 
@@ -113,4 +112,45 @@ for i = 1 : 9
   dphix = dY * F' ;               % [294, 60] = [294, 4] * [4, 60]
   dx(:,:,:,:, i) = row2im(dphix); % [8, 8, 8, 5] <-- [294, 60]
 end
+```
+
+## Full Connection
+When `X` and `F` matches in size and the padding is zero, convolution boils down to plain matrix multiplication and the loop over instances can be eliminated. The size is like
+```
+X: [H, W, D, P, N]
+F: [H, W, D, P, Q]  B: [1, Q]
+Y: [1, 1, 1, Q, N]
+```
+
+### FPROP
+Given:
+```
+XX: [HWDP, N]
+FF: [HWDP, Q]
+BB: [Q, 1]
+uu: [1, N] the all one vector
+``` 
+Produce:
+```
+YY: [Q, N]
+```
+by
+```
+YY =  FF' * XX
+YY += BB * uu 
+```
+
+### BPROP
+Given:
+```
+dYY:[Q, N]
+XX: [HWDP, N]
+FF: [HWDP, Q]
+uu: [1, N] the all one vector
+```
+Produce:
+```
+dXX = FF * dYY
+dFF = XX * dYY'
+dBB = uu * dYY'
 ```
