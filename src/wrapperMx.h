@@ -44,6 +44,13 @@ bool setCArray (mxArray const *pa, T arr[]) {
   return flag_success;
 }
 
+inline size_t sizeofMxType (mxClassID t) {
+  if (t == mxSINGLE_CLASS) return 4;
+  if (t == mxINT32_CLASS)  return 4;
+  if (t == mxDOUBLE_CLASS) return 8;
+
+  return 0; // TODO: more types if necessary
+}
 
 //// Thin wrapper for mxArray, which can be mxGPUArray. Never owns data.
 struct xpuMxArrayTW {
