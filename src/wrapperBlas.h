@@ -1,6 +1,6 @@
 #pragma once
 #include "mex.h"
-#include <exception>
+#include <stdexcept>
 
 // 2D matrix thin wrapper over raw data pointer (host or device)
 // presume continuous memory
@@ -11,7 +11,7 @@ struct matw {
 };
 
 // blas error message carrier (mainly from cublas?)
-struct blas_ex : public std::exception {
+struct blas_ex : public std::runtime_error {
   blas_ex (const char* msg);
 };
 

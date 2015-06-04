@@ -1,5 +1,5 @@
 #pragma once
-#include <exception>
+#include <stdexcept>
 #include "wrapperMx.h"
 
 // static memory across mex calling, all zeros
@@ -12,6 +12,6 @@ float* sm_ones (size_t nelem, xpuMxArrayTW::DEV_TYPE dt);
 void sm_release ();
 
 // exception: error message carrier
-struct sm_ex : public std::exception {
-  sm_ex (const char* msg) : exception(msg) {};
+struct sm_ex : public std::runtime_error {
+  sm_ex (const char* msg) : runtime_error(msg) {};
 };

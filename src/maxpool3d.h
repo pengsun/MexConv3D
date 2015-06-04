@@ -1,6 +1,6 @@
 #pragma once
 #include "wrapperMx.h"
-#include <exception>
+#include <stdexcept>
 
 //// the transformer
 struct maxpool3d {
@@ -37,7 +37,7 @@ protected:
 
 
 //// exception: error message carrier
-struct mp3d_ex : public std::exception {
+struct mp3d_ex : public std::runtime_error {
   mp3d_ex (const char *msg);
 };
 

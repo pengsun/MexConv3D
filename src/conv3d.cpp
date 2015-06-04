@@ -120,7 +120,7 @@ void conv3d_releaseWhenUnloadMex()
 
 //// impl of conv3d_ex
 conv3d_ex::conv3d_ex(const char* msg)
-  : exception(msg)
+  : runtime_error(msg)
 {
 
 }

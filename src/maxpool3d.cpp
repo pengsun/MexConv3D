@@ -94,7 +94,7 @@ void maxpool3d::create_dX()
 
 //// Impl of mp3d_ex
 mp3d_ex::mp3d_ex(const char* msg)
-  : exception(msg)
+  : runtime_error(msg)
 {
 
 }

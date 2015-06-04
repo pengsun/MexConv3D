@@ -55,7 +55,7 @@ private:
 
 //// Impl of exception
 blas_ex::blas_ex(const char* msg)
-  : exception(msg)
+  : runtime_error(msg)
 {
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "wrapperMx.h"
-#include <exception>
+#include <stdexcept>
 
 
 //// the transformer
@@ -43,7 +43,7 @@ protected:
 void conv3d_releaseWhenUnloadMex ();
 
 //// exception: error message carrier
-struct conv3d_ex : public std::exception {
+struct conv3d_ex : public std::runtime_error {
   conv3d_ex (const char* msg);
 };
 
