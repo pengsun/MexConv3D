@@ -5,10 +5,12 @@
 #include "_conv3d_blas_gpu.h"
 #include "_conv3d_blas_gpu_fc.h"
 #endif // WITH_GPUARRAY
+
 #ifdef TM
 #include "Timer.h"
 #endif // TM
 
+#include "staticMem.h"
 
 
 //// Impl of conv3d
@@ -112,6 +114,7 @@ void conv3d_releaseWhenUnloadMex()
 #ifdef WITH_GPUARRAY
   release_cublas_context(); // used by _conv3d_blas_gpu
 #endif // WITH_GPUARRAY
+  sm_release();
 }
 
 //// impl of conv3d_ex

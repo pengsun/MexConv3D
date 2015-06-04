@@ -8,5 +8,5 @@ B = gpuArray.rand(szB, 'single');
 %% fprop
 Y = mex_conv3d(X,F,B);
 %% bprop
-% dZdY = rand(size(Y), 'like',Y);
-% [dZdX,dZdF,dZdB] = mex_conv3d(X,F,B, dZdY);
+dZdY = rand(size(Y), 'like',Y);
+[dZdX,dZdF,dZdB] = mex_conv3d(X,F,B, dZdY);

@@ -57,7 +57,7 @@ protected: // helper: the stacked matrix storing phiX or dphiX
   CpyVolConvmatImpl make_initial_CpyVolConvmatImpl (const xpuMxArrayTW &vol);
 
   void init_convmat ();
-  void free_convmat ();
+  //void free_convmat ();
   void vol_to_convmat   (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst); // im2row
   void vol_from_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst); // row2im
   matw convmat;
@@ -67,5 +67,3 @@ protected: // helper for unit vector u
   void free_u ();
   matw u;
 };
-
-//// helper 

@@ -13,12 +13,14 @@ void buf_cpu_t::realloc( size_t _nelem )
   dealloc();
   beg = (float*) malloc( _nelem * sizeof(float) );
   if (beg == 0) throw sm_ex("staticMem: Out of CPU memory.\n");
+  nelem = _nelem;
 }
 
 void buf_cpu_t::dealloc()
 {
   if (beg != 0) free( (void*) beg );
   beg = 0;
+  nelem = 0;
 }
 
 

@@ -79,15 +79,17 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\conv3d.h" />
     <ClInclude Include="..\..\src\logmsg.h" />
+    <ClInclude Include="..\..\src\staticMem.h" />
     <ClInclude Include="..\..\src\wrapperBlas.h" />
     <ClInclude Include="..\..\src\maxpool3d.h" />
     <ClInclude Include="..\..\src\wrapperMx.h" />
     <ClInclude Include="..\..\src\_conv3d_blas_cpu.h" />
     <ClInclude Include="..\..\src\_conv3d_blas_gpu.h" />
     <ClInclude Include="..\..\src\_conv3d_cpu.h" />
-    <ClInclude Include="..\..\src\_cu_helper.h" />
+    <ClInclude Include="..\..\src\_cu_helper.cuh" />
     <ClInclude Include="..\..\src\_maxpool3d_cpu.h" />
     <ClInclude Include="..\..\src\_maxpool3d_gpu.h" />
+    <ClInclude Include="..\..\src\_staticMem.h" />
     <ClInclude Include="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\builtin_types.h" />
     <ClInclude Include="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\channel_descriptor.h" />
     <ClInclude Include="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\include\common_functions.h" />
@@ -204,15 +206,17 @@
     <ClCompile Include="..\..\mex_maxpool3d.cpp" />
     <ClCompile Include="..\..\src\conv3d.cpp" />
     <ClCompile Include="..\..\src\maxpool3d.cpp" />
+    <ClCompile Include="..\..\src\staticMem.cpp" />
     <ClCompile Include="..\..\src\wrapperBlas_cpu.cpp" />
     <ClCompile Include="..\..\src\wrapperMx.cpp" />
     <ClCompile Include="..\..\src\_conv3d_blas_cpu.cpp" />
     <ClCompile Include="..\..\src\_conv3d_cpu_pad0stride1.cpp" />
     <ClCompile Include="..\..\src\_maxpool3d_cpu.cpp" />
     <ClCompile Include="..\..\src\_maxpool3d_cpu_pad0PoolEqStride.cpp" />
+    <ClCompile Include="..\..\src\_staticMem_cpu.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\wrapperBlas_gpu.cu" />
+    <None Include="..\..\src\wrapperBlas_gpu.cpp" />
     <None Include="..\..\src\_conv3d_blas_gpu.cu" />
     <None Include="..\..\src\_maxpool3d_gpu.cu" />
   </ItemGroup>

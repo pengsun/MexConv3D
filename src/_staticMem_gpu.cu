@@ -16,9 +16,13 @@ static buf_gpu_t bufOnes_gpu;
 void buf_gpu_t::realloc( size_t _nelem )
 {
   dealloc();
+  
   void* tmp;
-  if ( cudaSuccess != cudaMalloc(&tmp, nelem*sizeof(float)) )
+  cudaError_t st = cudaMalloc(&tmp, _nelem*sizeof(float));
+  if ( cudaSuccess != st )
     throw sm_ex("staticMem: Out of GPU memory.\n");
+
+  nelem = _nelem;
   beg = (float*)tmp;
 }
 
@@ -29,6 +33,7 @@ void buf_gpu_t::dealloc()
       throw sm_ex("staticMem: error when releasing GPU memory.\n");
   }
   beg = 0;
+  nelem = 0;
 }
 
 
@@ -56,7 +61,7 @@ float* sm_ones_gpu (size_t nelem)
     dim3 sz_thd(CU_NUM_THREADS );
     kernelSetOne<float><<<sz_blk,sz_thd>>>(bufOnes_gpu.beg, nelem);
   }
-  return bufZeros_gpu.beg;
+  return bufOnes_gpu.beg;
 }
 
 void   sm_release_gpu ()

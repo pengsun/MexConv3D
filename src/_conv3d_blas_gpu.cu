@@ -1,6 +1,8 @@
 #include "cuda_runtime.h"
 #include "_conv3d_blas_gpu.h"
 #include "_cu_helper.cuh"
+#include "staticMem.h"
+
 #include "logmsg.h"
 #ifdef TM
 #include "Timer.h"
@@ -151,8 +153,8 @@ void conv3d_blas_gpu::fprop()
     } // for i
   } // try
   catch (const blas_ex& e) {
-    free_u();
-    free_convmat();
+    //free_u();
+    //free_convmat();
     throw conv3d_ex(e.what());
   }
 
@@ -165,8 +167,8 @@ void conv3d_blas_gpu::fprop()
   mexPrintf("conv3d_blas_gpu::fprop: %f\n", te);
 #endif // TM
 
-  free_u();
-  free_convmat();
+  //free_u();
+  //free_convmat();
 }
 
 void conv3d_blas_gpu::bprop()
@@ -204,13 +206,16 @@ void conv3d_blas_gpu::bprop()
     }
   }
   catch (const blas_ex& e) {
-    free_u();
-    free_convmat();
+    //free_u();
+    //free_convmat();
     throw conv3d_ex(e.what());
   }
-
-  free_u();
-  free_convmat();
+  catch (const sm_ex& e) {
+    throw conv3d_ex(e.what());
+  }
+    
+  //free_u();
+  //free_convmat();
 }
 
 //// Impl of helper: fprop
@@ -306,31 +311,21 @@ void conv3d_blas_gpu::init_convmat()
 {
   // set the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
-  if (Y.pa_cpu != 0) // in FPROP, Y has been set
-    convmat.H = numelVol(Y);
-  else // (dY != 0), in BPROP, dY has been set
-    convmat.H = numelVol(dY);
-
+  convmat.H = (Y.pa_cpu != 0) ? numelVol(Y) : numelVol(dY); // FPROP, Y; BPROP, dY
   convmat.W = numelVol(F) * F.getSizeAtDim(3);
   mwSize nelem = convmat.H * convmat.W;
 
-  // allocate the memory
-  void* tmp;
-  cudaError_t flag = cudaMalloc(&tmp,  nelem*sizeof(float) ) ;
-  if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
-  convmat.beg = (float*)tmp;
-
-  // assures all zeros
-  kernelSetZero<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(convmat.beg, nelem);
+  // the mem
+  convmat.beg = sm_zeros(nelem, X.getDevice()); // X always exists
 
   LOGMSG("conv3d_blas_gpu::init_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
 
-void conv3d_blas_gpu::free_convmat()
-{
-  cudaFree( (void*)convmat.beg );
-  LOGMSG("conv3d_blas_gpu::free_convmat()\n");
-}
+//void conv3d_blas_gpu::free_convmat()
+//{
+//  cudaFree( (void*)convmat.beg );
+//  LOGMSG("conv3d_blas_gpu::free_convmat()\n");
+//}
 
 void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
@@ -358,29 +353,19 @@ void conv3d_blas_gpu::init_u()
 {
   // decide the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
-  if (Y.pa_cpu != 0)
-    u.H = numelVol(Y);
-  else // (dY != 0)
-    u.H = numelVol(dY);
-
+  u.H = (Y.pa_cpu != 0) ? numelVol(Y) : numelVol(dY); // FPROP, Y; BPROP, dY
   u.W = 1;
   mwSize nelem = u.H * u.W ;
 
   // allocate the memory
-  void* tmp;
-  cudaError_t flag = cudaMalloc(&tmp, nelem * sizeof(float));
-  if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
-  u.beg = (float*) tmp;
-
-  // make sure all one
-  kernelSetOne<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(u.beg, nelem);
+  u.beg = sm_ones(nelem, X.getDevice()); // X always exists
 
   LOGMSG("conv3d_blas_gpu::init_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
 
-void conv3d_blas_gpu::free_u()
-{
-  cudaFree( (void*)u.beg );
-
-  LOGMSG("conv3d_blas_gpu::free_u()\n");
-}
+//void conv3d_blas_gpu::free_u()
+//{
+//  cudaFree( (void*)u.beg );
+//
+//  LOGMSG("conv3d_blas_gpu::free_u()\n");
+//}
