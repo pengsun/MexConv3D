@@ -59,11 +59,17 @@ if opts.enableGpu % GPU-specific files
 end
 % common
 lib_src{end+1} = fullfile('Timer.cpp') ;
+lib_src{end+1} = fullfile('staticMem.cpp') ;
+lib_src{end+1} = fullfile('_staticMem_cpu.cpp') ;
+if opts.enableGpu % GPU-specific files
+  lib_src{end+1} = fullfile('_staticMem_gpu.cu') ;
+end
+lib_src{end+1} = fullfile('wrapperMx.cpp') ;
 lib_src{end+1} = fullfile('wrapperBlas_cpu.cpp') ;
 if opts.enableGpu % GPU-specific files
   lib_src{end+1} = fullfile('wrapperBlas_gpu.cpp') ;
 end
-lib_src{end+1} = fullfile('wrapperMx.cpp') ;
+
 
 %% Setup CUDA toolkit
 arch = computer('arch') ;

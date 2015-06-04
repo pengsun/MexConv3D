@@ -1,4 +1,5 @@
 #pragma once
+#include <exception>
 #include "wrapperMx.h"
 
 // static memory across mex calling, all zeros
@@ -7,7 +8,7 @@ float* sm_zeros (size_t nelem, xpuMxArrayTW::DEV_TYPE dt);
 // static memory across mex calling, all ones
 float* sm_ones (size_t nelem, xpuMxArrayTW::DEV_TYPE dt);
 
-// release all (called typically when unloading mex file)
+// release all (called when unloading mex file)
 void sm_release ();
 
 // exception: error message carrier
