@@ -19,7 +19,6 @@ protected:
   matw make_dYY_ (); // [Q, N]
 
 protected: // helper for unit vector uu
-  void init_uu ();
-  void free_uu ();
+  void initStaticMem_uu ();
   matw uu; // [1, N]
 };

@@ -218,7 +218,9 @@
   <ItemGroup>
     <None Include="..\..\src\wrapperBlas_gpu.cpp" />
     <None Include="..\..\src\_conv3d_blas_gpu.cu" />
+    <None Include="..\..\src\_conv3d_blas_gpu_fc.cu" />
     <None Include="..\..\src\_maxpool3d_gpu.cu" />
+    <None Include="..\..\src\_staticMem_gpu.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -117,6 +117,7 @@ void conv3d_releaseWhenUnloadMex()
   sm_release();
 }
 
+
 //// impl of conv3d_ex
 conv3d_ex::conv3d_ex(const char* msg)
   : exception(msg)

@@ -14,12 +14,12 @@ else
 end
 run_all_conv3d(dg);
 %% test MaxPool3d
-% if strcmp(type,'cpu')
-%   dg = @t_mp3d.dg_cpu;
-% else
-%   dg = @t_mp3d.dg_gpu;
-% end
-% run_all_mp3d(dg);
+if strcmp(type,'cpu')
+  dg = @t_mp3d.dg_cpu;
+else
+  dg = @t_mp3d.dg_gpu;
+end
+run_all_mp3d(dg);
 
 
 function run_all_conv3d (dg)

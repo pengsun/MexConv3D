@@ -1,13 +1,15 @@
 #include "cuda_runtime.h"
 #include "_conv3d_blas_gpu_fc.h"
 #include "_cu_helper.cuh"
+#include "staticMem.h"
+
 #include "logmsg.h"
 
 
 void conv3d_blas_gpu_fc::fprop()
 {
   create_Y();
-  init_uu(); 
+  initStaticMem_uu(); 
 
   try {
     // YY_ = F_' * XX_
@@ -22,11 +24,12 @@ void conv3d_blas_gpu_fc::fprop()
 
   } // try
   catch (const blas_ex& e) {
-    free_uu();
+    throw conv3d_ex(e.what());
+  }
+  catch (const sm_ex& e) {
     throw conv3d_ex(e.what());
   }
 
-  free_uu();
 }
 
 void conv3d_blas_gpu_fc::bprop()
@@ -36,7 +39,7 @@ void conv3d_blas_gpu_fc::bprop()
   create_dF();
   create_dB();
 
-  init_uu();
+  initStaticMem_uu();
 
   try {
     // dXX_ = F_ * dYY_
@@ -56,11 +59,10 @@ void conv3d_blas_gpu_fc::bprop()
 
   }
   catch (const blas_ex& e) {
-    free_uu();
     throw conv3d_ex(e.what());
   }
 
-  free_uu();
+
 }
 
 
@@ -126,25 +128,12 @@ matw conv3d_blas_gpu_fc::make_dYY_()
 }
 
 //// Imple of helpers for unit vector uu
-void conv3d_blas_gpu_fc::init_uu()
+void conv3d_blas_gpu_fc::initStaticMem_uu()
 {
   uu.H = 1;
   uu.W = X.getSizeAtDim(4);
 
   mwSize nelem = uu.W ;
 
-  void* tmp;
-  cudaError_t flag = cudaMalloc(&tmp, nelem * sizeof(float));
-  if (flag != cudaSuccess) throw conv3d_ex("Out of memory on GPU.\n");
-  uu.beg = (float*) tmp;
-
-  kernelSetOne<float><<<ceil_divide(nelem,CU_NUM_THREADS), CU_NUM_THREADS>>>(uu.beg, nelem);
+  uu.beg = sm_ones(nelem, X.getDevice());
 }
-
-void conv3d_blas_gpu_fc::free_uu()
-{
-  cudaFree( (void*) uu.beg );
-}
-
-
-

@@ -126,8 +126,8 @@ conv3d_blas_gpu::conv3d_blas_gpu(const conv3d& obj)
 void conv3d_blas_gpu::fprop()
 {
   create_Y();
-  init_convmat();
-  init_u(); 
+  initStaticMem_convmat();
+  initStaticMem_u(); 
 
 #ifdef TM
   Timer tm;
@@ -153,8 +153,9 @@ void conv3d_blas_gpu::fprop()
     } // for i
   } // try
   catch (const blas_ex& e) {
-    //free_u();
-    //free_convmat();
+    throw conv3d_ex(e.what());
+  }
+  catch (const sm_ex& e) {
     throw conv3d_ex(e.what());
   }
 
@@ -167,8 +168,6 @@ void conv3d_blas_gpu::fprop()
   mexPrintf("conv3d_blas_gpu::fprop: %f\n", te);
 #endif // TM
 
-  //free_u();
-  //free_convmat();
 }
 
 void conv3d_blas_gpu::bprop()
@@ -177,8 +176,8 @@ void conv3d_blas_gpu::bprop()
   create_dX();
   create_dF();
   create_dB();
-  init_convmat();
-  init_u();
+  initStaticMem_convmat();
+  initStaticMem_u();
 
   try {
     // iterate over each instance
@@ -206,16 +205,12 @@ void conv3d_blas_gpu::bprop()
     }
   }
   catch (const blas_ex& e) {
-    //free_u();
-    //free_convmat();
     throw conv3d_ex(e.what());
   }
   catch (const sm_ex& e) {
     throw conv3d_ex(e.what());
   }
-    
-  //free_u();
-  //free_convmat();
+
 }
 
 //// Impl of helper: fprop
@@ -307,7 +302,7 @@ conv3d_blas_gpu::CpyVolConvmatImpl conv3d_blas_gpu::make_initial_CpyVolConvmatIm
   return ip;
 }
 
-void conv3d_blas_gpu::init_convmat()
+void conv3d_blas_gpu::initStaticMem_convmat()
 {
   // set the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
@@ -318,14 +313,8 @@ void conv3d_blas_gpu::init_convmat()
   // the mem
   convmat.beg = sm_zeros(nelem, X.getDevice()); // X always exists
 
-  LOGMSG("conv3d_blas_gpu::init_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
+  LOGMSG("conv3d_blas_gpu::initStaticMem_convmat(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
-
-//void conv3d_blas_gpu::free_convmat()
-//{
-//  cudaFree( (void*)convmat.beg );
-//  LOGMSG("conv3d_blas_gpu::free_convmat()\n");
-//}
 
 void conv3d_blas_gpu::vol_to_convmat (CpyVolConvmatImpl &ip, xpuMxArrayTW &vol, mwSize iInst)
 {
@@ -349,7 +338,7 @@ void conv3d_blas_gpu::vol_from_convmat(CpyVolConvmatImpl &ip, xpuMxArrayTW &vol,
   kernelCpyVolConvmat<DIR_VOL_FROM_CONVMAT><<<blkSize, thdSize>>>(ip);
 }
 
-void conv3d_blas_gpu::init_u()
+void conv3d_blas_gpu::initStaticMem_u()
 {
   // decide the size
   assert( (Y.pa_cpu != 0) || (dY.pa_cpu != 0) );
@@ -360,12 +349,5 @@ void conv3d_blas_gpu::init_u()
   // allocate the memory
   u.beg = sm_ones(nelem, X.getDevice()); // X always exists
 
-  LOGMSG("conv3d_blas_gpu::init_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
+  LOGMSG("conv3d_blas_gpu::initStaticMem_u(): %d KB\n", toKB(nelem, mxSINGLE_CLASS));
 }
-
-//void conv3d_blas_gpu::free_u()
-//{
-//  cudaFree( (void*)u.beg );
-//
-//  LOGMSG("conv3d_blas_gpu::free_u()\n");
-//}
