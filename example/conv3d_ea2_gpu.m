@@ -11,5 +11,5 @@ stride = [2,3,5];         % 3D stride
 %% fprop
 Y = mex_conv3d(X,F,B, 'pad', pad, 'stride',stride);
 %% bprop
-dZdY = rand(size(Y), 'single');
+dZdY = rand(size(Y), 'like', Y);
 [dZdX,dZdF,dZdB] = mex_conv3d(X,F,B, dZdY, 'pad',pad, 'stride',stride);
