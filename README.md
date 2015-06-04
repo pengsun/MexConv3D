@@ -14,7 +14,7 @@ Step by step:
 * Run `setup_path.m` in root directory to add path
 * (Optional) CD to folder `unittest` and run `run_all.m` to verify everything works well
 
-This platform has been tested in the following environment:
+MexConv3D has been tested in the following environment:
 
 * Matlab R2014a + Windows 8.1 + Visual Studio 2012
 * Matlab R2014a + Ubuntu 12.04 + GCC 4.8.2
