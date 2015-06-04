@@ -7,9 +7,17 @@ Matlab mex implementation (with both CPU and GPU version) of the basic operation
 In this project only the most basic building blocks are provided. For a ready-to-use 3D ConvNet in Matlab, one needs a high-level wrapper like the `vl_simplenn.m` in [matconvnet](https://github.com/vlfeat/matconvnet) or [MatConvDAG](https://github.com/pengsun/MatConvDAG)
 
 ## Install
+Step by step:
+
 * Run `make_all.m` in root directory to compile the mex files 
   * CUDA toolkit needed if enabling GPU
 * Run `setup_path.m` in root directory to add path
+* (Optional) CD to folder `unittest` and run `run_all.m` to verify everything works well
+
+This platform has been tested in the following environment:
+
+* Matlab R2014a + Windows 8.1 + Visual Studio 2012
+* Matlab R2014a + Ubuntu 12.04 + GCC 4.8.2
 
 ## Usage
 For 3D Convolution:
