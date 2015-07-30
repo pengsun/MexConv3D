@@ -1,6 +1,7 @@
 %MEX_MAXPOOL3D Volume max pooling for 3D convnet
 %  [Y,ind] = MEX_MAXPOOL3D(X); forward pass
-%  dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass
+%  dZdX = MEX_MAXPOOL3D(dZdY, ind); backward pass (deprecated, will issue warning)
+%  dzdX = MEX_MAXPOOL3D(dZdY, ind, szX); backward pass
 %  [...] = MEX_MAXPOOL3D(..., 'pool',pool, 'stride',s, 'pad',pad); options
 %
 %  Input:
@@ -9,6 +10,7 @@
 %   N is #instances.
 %   dZdY: [Ho,Wo,Do,M,N]. Delta signal at output port. Z means loss.
 %   ind: see ind Output
+%   szX: [5] size of X or dzdX (they must be the same)
 %
 % Options:  
 %   pool: [PH,PW,PD] or [P]. Pooling 3D window size. PH, PW, PD are the 

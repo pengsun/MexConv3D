@@ -29,7 +29,6 @@ struct maxpool3d {
 
 protected:
   void check_dY_ind   ();
-  void check_pad_pool ();
   void create_Y   ();
   void create_ind ();
   void create_dX  ();
@@ -55,6 +54,8 @@ protected:
   void set_pool   (maxpool3d &h, mxArray const *pa);
   void set_stride (maxpool3d &h, mxArray const *pa);
   void set_pad    (maxpool3d &h, mxArray const *pa);
+
+  void check_padpool (const maxpool3d &h);
 };
 
 struct factory_mp3d_withcudnn : public factory_mp3d { 

@@ -84,8 +84,9 @@ classdef unit
       % 
       fprintf('bprop: generating all one dzdy, calculating dzdx...\n');
       dzdy = ones(size(Y),'like',Y);
-      dzdx = mex_maxpool3d(dzdy,ind,...
+      dzdx = mex_maxpool3d(dzdy,ind,size(X),...
         'pool',pool, 'stride',stride, 'pad',pad);
+      fprintf('dzdX: [%d %d %d %d %d]\n', size5d(dzdx));
       %
       fprintf('assert dzdx be consistent with max index...\n');
       aa = zeros(size(dzdx), 'single'); % TODO: like

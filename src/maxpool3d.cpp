@@ -1,3 +1,4 @@
+#include "matrix.h"
 #include "wrapperMx.h"
 #include "maxpool3d.h"
 #include "_maxpool3d_cpu.h"
@@ -32,21 +33,8 @@ void maxpool3d::check_dY_ind()
     throw mp3d_ex("In bprop(): dY and ind must be both gpuArray or CPU mxArray.\n");
 }
 
-void maxpool3d::check_pad_pool()
-{
-  if ( (pad[0]+pad[1]) >= pool[0] ||
-       (pad[2]+pad[3]) >= pool[1] ||
-       (pad[4]+pad[5]) >= pool[2] )
-    throw mp3d_ex("Pool size must be strictly larger than (sum of lower, higher) pad size.");
-}
-
 void maxpool3d::create_Y()
 {
-  // check dimensions: should we?
-  //mwSize ndimX = mxGetNumberOfDimensions(X);
-  //if (ndimX < 3) mexErrMsgTxt(THE_CMD);
-
-  check_pad_pool();
 
   if (pad[0]+pad[1]+X.getSizeAtDim(0) < pool[0] || 
     pad[2]+pad[3]+X.getSizeAtDim(1) < pool[1] ||
@@ -72,12 +60,7 @@ void maxpool3d::create_ind()
 
 void maxpool3d::create_dX()
 {
-  // check ind & dY
-  if ( ind.getElemType()!=mxINT32_CLASS || dY.getElemType()!=mxSINGLE_CLASS ) 
-    throw mp3d_ex("In bprop(): dY must be SINGLE, ind must be double.");
-
-  //
-  check_pad_pool();
+  if (dX.getNDims() != 0) return; // already created
 
   // size dX: the right size taking into account pad and stride
   mwSize szdX[5] = {0,0,0,1,1};
@@ -87,7 +70,7 @@ void maxpool3d::create_dX()
   szdX[3] = dY.getSizeAtDim(3);
   szdX[4] = dY.getSizeAtDim(4);
 
-  // create Y
+  // create dX
   dX.setMxArray( createVol5dZeros(szdX, dY.dt) );
 }
 
@@ -112,7 +95,7 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
   int opt_beg = -1;
   xpuMxArrayTW::DEV_TYPE dt;
 
-  if (no == 2) {
+  if (no == 2) { // fprop
     holder.X.setMxArray( (mxArray*) vi[0] ); // we won't change it
     dt = holder.X.getDevice();
 
@@ -122,7 +105,8 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
 
     holder.ct = maxpool3d::FPROP;
     opt_beg = 1;
-  } else if (no == 1) {
+  } 
+  else if (no == 1) { // bprop
     holder.dY.setMxArray( (mxArray*)  vi[0]);
     holder.ind.setMxArray( (mxArray*) vi[1]);
     dt = holder.dY.getDevice();
@@ -130,18 +114,52 @@ maxpool3d* factory_mp3d_homebrew::parse_and_create(int no, mxArray *vo[], int ni
     if ( ni < 2 || 
          holder.dY.getElemType()  != mxSINGLE_CLASS || 
          holder.ind.getElemType() != mxINT32_CLASS) 
-      throw mp3d_ex("For bprop(): there should be at least 2 arguments, X, ind.\n"
-      "The feature map X must be SINGLE, the max index ind must be int32,"
-      "they should be both gpuArray or be both mxArray.\n");
+      throw mp3d_ex("For bprop(): there should be at least 3 arguments, dzdY, ind.\n"
+        "The dzdY must be SINGLE, the max index ind must be int32,"
+        "they should be both gpuArray or be both mxArray.\n");
 
     holder.ct = maxpool3d::BPROP;
     opt_beg = 2;
-  } else {
+  } 
+  else {
     throw mp3d_ex("Unrecognized arguments/way of calling. "
       "The output should be either [Y, ind] (fprop) or ind (bprop). ");
   }
 
+  // if bprop: create dX if szX is provided args:(dzdY, ind, szX)
+  if (holder.ct == maxpool3d::BPROP) {
+    if (ni >= 3 && !mxIsChar(vi[2]) ) {
+      // szX provided, check it
+      if (!mxIsDouble(vi[2])) mexErrMsgTxt("setCArray: pa must be double matrix\n");
+      double *ptr = (double*)mxGetData(vi[2]);
+      mwSize nelem = mxGetNumberOfElements(vi[2]);
+      if (nelem > 5 || nelem < 3) 
+        throw mp3d_ex("The third argument must be: 3 <= numel(szX) <= 5.\n");
+
+      // get szX
+      mwSize szX[5];
+      szX[3] = szX[4] = 1;
+      for (int i = 0; i < nelem; ++i) szX[i] = (mwSize) ptr[i];
+      
+      // create the dX
+      holder.dX.setMxArray( createVol5dZeros(szX, holder.dY.dt) );
+
+      // reset the option beginning
+      opt_beg = 3;
+    } 
+    else // issue the warning
+      mexWarnMsgTxt("For bprop(), the calling method with 2 args:\n"
+        "[...] = mex_maxpool3d(dzdY, ind, ...)\n"
+        "is deprecated, because this could cause ambiguity when inferring input X size.\n"
+        "Use the new one to specify the size for input X (or dzdX) explicitly:\n"
+        "[...] = mex_maxpool3d(dzdY, ind, szX,...)\n");
+  }
+
+  // set options
   set_options(holder, opt_beg, ni, vi);
+
+  // check validity
+  check_padpool(holder);
 
   // create the desired worker and set the parameters
 #ifdef WITH_GPUARRAY
@@ -183,5 +201,13 @@ void factory_mp3d_homebrew::set_pad(maxpool3d &h, mxArray const *pa )
 {
   if ( !setCArray<mwSize, 6>(pa, h.pad) )
     throw mp3d_ex("The length of option pad must be 1 or 6.");
+}
+
+void factory_mp3d_homebrew::check_padpool(const maxpool3d &h)
+{
+  if ( (h.pad[0] + h.pad[1]) >= h.pool[0] ||
+       (h.pad[2] + h.pad[3]) >= h.pool[1] ||
+       (h.pad[4] + h.pad[5]) >= h.pool[2] )
+    throw mp3d_ex("Pool size must be strictly larger than (sum of lower, higher) pad size.");
 }
 
