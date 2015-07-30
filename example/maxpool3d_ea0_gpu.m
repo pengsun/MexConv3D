@@ -5,7 +5,7 @@ x = gpuArray.rand(sz, 'single');
 [y, ind] = mex_maxpool3d(x);
 %% bprop 
 dzdy = gpuArray.ones(size(y), 'single');
-dzdx = mex_maxpool3d(dzdy,ind);
+dzdx = mex_maxpool3d(dzdy,ind,size(x));
 %%
 a1 = x( dzdx > 0 );
 a2 = x( sort(ind(:),'ascend') );

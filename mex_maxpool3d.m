@@ -10,7 +10,8 @@
 %   N is #instances.
 %   dZdY: [Ho,Wo,Do,M,N]. Delta signal at output port. Z means loss.
 %   ind: see ind Output
-%   szX: [5] size of X or dzdX (they must be the same)
+%   szX: [5] or [4]. size of X or dzdX (they must be the same). append 
+%   element 1 to its tail if numel(szX)==4
 %
 % Options:  
 %   pool: [PH,PW,PD] or [P]. Pooling 3D window size. PH, PW, PD are the 

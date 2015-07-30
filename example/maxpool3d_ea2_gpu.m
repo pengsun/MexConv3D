@@ -9,5 +9,5 @@ x = gpuArray.rand(sz, 'single'); % Input data/feature maps
   'pool',pool, 'stride',stride, 'pad',pad);
 %% bprop
 dzdy = rand(size(y),'like',y);
-xx = mex_maxpool3d(dzdy,ind,...
+xx = mex_maxpool3d(dzdy,ind,size(x),...
   'pool',pool, 'stride',stride, 'pad',pad);
