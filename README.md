@@ -9,15 +9,15 @@ In this project only the most basic building blocks are provided. For a ready-to
 ## Install
 Step by step:
 
-* Run `make_all.m` in root directory to compile the mex files 
+* Run `make_all.m` in root directory to make the mex files 
   * CUDA toolkit needed if enabling GPU
 * Run `setup_path.m` in root directory to add path
 * (Optional) CD to folder `unittest` and run `run_all.m` to verify everything works well
 
 MexConv3D has been tested in the following environment:
 
-* Matlab R2014a + Windows 8.1 + Visual Studio 2012
-* Matlab R2014a + Ubuntu 12.04 + GCC 4.8.2
+* Matlab R2014a + Windows 8.1 + Visual Studio 2012 + CUDA Toolkit 6.5 (if enabling GPU)
+* Matlab R2014a + Ubuntu 12.04 + GCC 4.8.2 + CUDA Toolkit 6.5 (if enabling GPU)
 
 ## Usage
 For 3D Convolution:
