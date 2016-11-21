@@ -56,4 +56,7 @@ xx = mex_maxpool3d(dzdy,ind,size(x),...
   'pool',pool, 'stride',stride, 'pad',pad);
 ```
 
+## Example
 See more scripts in directory `example`. Type `help mex_conv3d` or `help mex_maxpool3d` for doc. See `README.md` in each folder (if any) to understand the folder layout and the purpose.
+
+See `example/example_simplenet` for an example of doing fprop/bprop over a simple 3D convnet (which is based on the code of Sushma Rudra).
